@@ -33,3 +33,5 @@ application:
 clamav:
   host: localhost
   port: 3310
+  connect-timeout: 2s
+  read-timeout: 30s

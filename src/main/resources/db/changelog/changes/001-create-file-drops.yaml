@@ -1,0 +1,119 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-file-drops
+      author: tuiop
+      changes:
+        - createTable:
+            tableName: file_drops
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_file_drops
+              - column:
+                  name: original_file_name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: detected_content_type
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: size
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: storage_key
+                  type: VARCHAR(512)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: sha256
+                  type: VARCHAR(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: download_token_hash
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: management_token_hash
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: password_hash
+                  type: VARCHAR(255)
+              - column:
+                  name: created_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: expires_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: deleted_at
+                  type: TIMESTAMP WITH TIME ZONE
+              - column:
+                  name: max_downloads
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: download_count
+                  type: INTEGER
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: VARCHAR(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: version
+                  type: BIGINT
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: file_drops
+            columnNames: storage_key
+            constraintName: uk_file_drops_storage_key
+        - addUniqueConstraint:
+            tableName: file_drops
+            columnNames: download_token_hash
+            constraintName: uk_file_drops_download_token_hash
+        - addUniqueConstraint:
+            tableName: file_drops
+            columnNames: management_token_hash
+            constraintName: uk_file_drops_management_token_hash
+        - createIndex:
+            tableName: file_drops
+            indexName: idx_file_drops_status_expires_at
+            columns:
+              - column:
+                  name: status
+              - column:
+                  name: expires_at
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE file_drops
+              ADD CONSTRAINT ck_file_drops_size_non_negative CHECK (size >= 0),
+              ADD CONSTRAINT ck_file_drops_max_downloads CHECK (max_downloads BETWEEN 1 AND 100),
+              ADD CONSTRAINT ck_file_drops_download_count_non_negative CHECK (download_count >= 0),
+              ADD CONSTRAINT ck_file_drops_status CHECK (status IN ('AVAILABLE', 'USED', 'EXPIRED', 'DELETED', 'FAILED'))
+      rollback:
+        - dropTable:
+            tableName: file_drops

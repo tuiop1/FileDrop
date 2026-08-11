@@ -35,7 +35,7 @@ public class FileDrop {
     private String managementTokenHash;
 
 
-    @Column(name = "password_hash", nullable = false, unique = true )
+    @Column(name = "password_hash")
     private String passwordHash;
 
 
@@ -47,18 +47,19 @@ public class FileDrop {
     private Instant deletedAt;
 
 
-    @Column(name = "password_hash", nullable = false)
+    @Column(name = "max_downloads", nullable = false)
     private Integer maxDownloads;
-    @Column(name = "password_hash", nullable = false)
+    @Column(name = "download_count", nullable = false)
     private Integer downloadCount;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
     private FileDropStatus status;
 
 
     @Version
+    @Column(name = "version", nullable = false)
     private long version;
 
 }
-
 

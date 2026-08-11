@@ -20,8 +20,7 @@ public class FileDropService {
     private final TemporaryFileStorage temporaryFileStorage;
 
 
-
-    public FileDrop create(MultipartFile file, CreateDropRequest request){
+    public FileDrop create(MultipartFile file, CreateDropRequest request) {
         fileDropValidator.firstFileValidation(file);
 
         createDropRequestValidator.validate(request);
@@ -29,15 +28,31 @@ public class FileDropService {
 
         Path tempFile = temporaryFileStorage.store(file);
 
-        try{
+        Throwable processingFailure = null;
 
+        try {
+            String contentType = fileDropValidator.preStoreFileValidation(tempFile);
 
-        } catch (Exception e) {
-
+            // Permanent storage and entity creation will be added here.
+            return new FileDrop();
+        } catch (RuntimeException | Error exception) {
+            processingFailure = exception;
+            throw exception;
+        } finally {
+            deleteTemporaryFile(tempFile, processingFailure);
         }
+    }
 
+    private void deleteTemporaryFile(Path tempFile, Throwable processingFailure) {
+        try {
+            temporaryFileStorage.delete(tempFile);
+        } catch (RuntimeException cleanupException) {
+            if (processingFailure != null) {
+                processingFailure.addSuppressed(cleanupException);
+                return;
+            }
 
-
-        return new FileDrop();
+            throw cleanupException;
+        }
     }
 }

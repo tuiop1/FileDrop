@@ -16,7 +16,6 @@ spring:
 
 
 
-
 application:
 
   filedrop:
@@ -28,3 +27,9 @@ application:
     expiration:
       min: 1m
       max: 7d
+
+
+
+clamav:
+  host: localhost
+  port: 3310

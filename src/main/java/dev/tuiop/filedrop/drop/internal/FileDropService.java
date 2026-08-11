@@ -22,7 +22,7 @@ public class FileDropService {
 
 
     public FileDrop create(MultipartFile file, CreateDropRequest request){
-        fileDropValidator.firstFileDropValidation(file);
+        fileDropValidator.firstFileValidation(file);
 
         createDropRequestValidator.validate(request);
 

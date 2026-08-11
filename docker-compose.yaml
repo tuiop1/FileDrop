@@ -7,3 +7,8 @@ services:
       - 'POSTGRES_USER=myuser'
     ports:
       - '5432'
+
+  clamav:
+    image: clamav/clamav:latest
+    ports:
+      - '3310'

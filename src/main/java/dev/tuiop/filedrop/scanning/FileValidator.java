@@ -6,7 +6,7 @@ import java.nio.file.Path;
 
 public interface FileValidator {
 
-    void firstFileDropValidation(MultipartFile file);
+    void firstFileValidation(MultipartFile file);
 
-    String preStoreFileDropValidation(Path path);
+    String preStoreFileValidation(Path path);
 }

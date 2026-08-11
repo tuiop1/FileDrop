@@ -1,8 +1,7 @@
-package dev.tuiop.filedrop.scanning.internal;
+package dev.tuiop.filedrop.scanning.internal.typedetection;
 
 import dev.tuiop.filedrop.scanning.internal.exception.ContentTypeDetectionException;
 import dev.tuiop.filedrop.scanning.internal.exception.UnsupportedContentTypeException;
-import dev.tuiop.filedrop.scanning.ContentTypeDetector;
 import org.apache.tika.Tika;
 import org.springframework.stereotype.Component;
 

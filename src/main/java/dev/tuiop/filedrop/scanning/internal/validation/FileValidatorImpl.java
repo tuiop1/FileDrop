@@ -1,10 +1,10 @@
-package dev.tuiop.filedrop.scanning.internal;
+package dev.tuiop.filedrop.scanning.internal.validation;
 
 import dev.tuiop.filedrop.scanning.internal.exception.EmptyFileException;
 import dev.tuiop.filedrop.scanning.internal.exception.FileTooLargeException;
 import dev.tuiop.filedrop.scanning.internal.exception.InvalidFileNameException;
-import dev.tuiop.filedrop.scanning.ContentTypeDetector;
 import dev.tuiop.filedrop.scanning.FileValidator;
+import dev.tuiop.filedrop.scanning.internal.typedetection.ContentTypeDetector;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -24,7 +24,7 @@ class FileValidatorImpl implements FileValidator {
 
     // validation before saving the file to temporary storage
     @Override
-    public void firstFileDropValidation(MultipartFile file) {
+    public void firstFileValidation(MultipartFile file) {
 
 
         if (file.isEmpty()) {
@@ -47,8 +47,8 @@ class FileValidatorImpl implements FileValidator {
     }
 
     @Override
-    public String preStoreFileDropValidation(Path path) {
-        return contentTypeDetector.detect(path);
+    public String preStoreFileValidation(Path path) {
+         contentTypeDetector.detect(path);
     }
 
 }

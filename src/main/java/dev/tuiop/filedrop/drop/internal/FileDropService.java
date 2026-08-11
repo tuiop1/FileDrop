@@ -9,12 +9,13 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 public class FileDropService {
 
-
     private final FileDropRepository fileDropRepository;
+    private final CreateDropRequestValidator createDropRequestValidator;
 
 
 
     public FileDrop create(MultipartFile file, CreateDropRequest request){
+        createDropRequestValidator.validate(request);
 
         return new FileDrop();
     }

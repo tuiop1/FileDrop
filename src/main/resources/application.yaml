@@ -2,6 +2,10 @@ spring:
   application:
     name: FileDrop
 
+  servlet:
+    multipart:
+      max-file-size: 500MB
+      max-request-size: 510MB
 
   modulith:
     events:
@@ -9,3 +13,13 @@ spring:
       jdbc:
         schema-initialization:
           enabled: true
+
+
+
+
+application:
+  file:
+    max-size: 500MB
+    expiration:
+      min: 1m
+      max: 7d

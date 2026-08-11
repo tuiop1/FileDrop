@@ -18,6 +18,11 @@ spring:
 
 
 application:
+
+  filedrop:
+    temporary-storage:
+      directory: ${FILEDROP_TEMP_DIR:${java.io.tmpdir}/filedrop}
+
   file:
     max-size: 100MB
     expiration:

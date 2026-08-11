@@ -1,6 +1,6 @@
-package dev.tuiop.filedrop.drop.internal;
+package dev.tuiop.filedrop.drop.internal.validation;
 
-import dev.tuiop.filedrop.drop.dto.CreateDropRequest;
+import dev.tuiop.filedrop.drop.internal.dto.CreateDropRequest;
 import dev.tuiop.filedrop.drop.internal.exception.InvalidExpirationException;
 import dev.tuiop.filedrop.drop.internal.exception.InvalidPasswordException;
 import org.springframework.beans.factory.annotation.Value;
@@ -9,6 +9,8 @@ import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 @Component
 public class CreateDropRequestValidator {
@@ -81,27 +83,33 @@ public class CreateDropRequestValidator {
             return;
         }
 
+        List<String> errors = new ArrayList<>();
+
         if (password.isBlank()) {
-            throw new InvalidPasswordException("Password must not be blank.");
+            errors.add("Password must not be blank.");
         }
 
         int passwordLength = password.codePointCount(0, password.length());
 
         if (passwordLength < MIN_PASSWORD_LENGTH || passwordLength > MAX_PASSWORD_LENGTH) {
-            throw new InvalidPasswordException(
+            errors.add(
                     "Password must be between %d and %d Unicode characters."
                             .formatted(MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH)
             );
         }
 
         if (password.codePoints().anyMatch(Character::isISOControl)) {
-            throw new InvalidPasswordException("Password must not contain control characters.");
+            errors.add("Password must not contain control characters.");
         }
 
-        if (compromisedPasswordChecker.check(password).isCompromised()) {
-            throw new InvalidPasswordException(
+        if (!password.isBlank() && compromisedPasswordChecker.check(password).isCompromised()) {
+            errors.add(
                     "Password appears in a known data breach and must not be used."
             );
+        }
+
+        if (!errors.isEmpty()) {
+            throw new InvalidPasswordException(errors);
         }
     }
 }

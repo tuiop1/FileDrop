@@ -1,4 +1,4 @@
-package dev.tuiop.filedrop.drop.internal;
+package dev.tuiop.filedrop.drop.internal.validation;
 
 import dev.tuiop.filedrop.drop.internal.exception.EmptyFileException;
 import dev.tuiop.filedrop.drop.internal.exception.FileTooLargeException;

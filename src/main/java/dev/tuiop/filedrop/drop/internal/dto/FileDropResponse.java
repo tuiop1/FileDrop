@@ -1,4 +1,4 @@
-package dev.tuiop.filedrop.drop.dto;
+package dev.tuiop.filedrop.drop.internal.dto;
 
 import dev.tuiop.filedrop.drop.internal.FileDropStatus;
 

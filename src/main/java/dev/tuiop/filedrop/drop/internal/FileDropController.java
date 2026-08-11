@@ -1,7 +1,7 @@
 package dev.tuiop.filedrop.drop.internal;
 
-import dev.tuiop.filedrop.drop.dto.CreateDropRequest;
-import dev.tuiop.filedrop.drop.dto.FileDropResponse;
+import dev.tuiop.filedrop.drop.internal.dto.CreateDropRequest;
+import dev.tuiop.filedrop.drop.internal.dto.FileDropResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

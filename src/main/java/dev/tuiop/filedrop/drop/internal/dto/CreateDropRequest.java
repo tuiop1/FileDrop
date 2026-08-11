@@ -1,4 +1,4 @@
-package dev.tuiop.filedrop.drop.dto;
+package dev.tuiop.filedrop.drop.internal.dto;
 
 import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.Max;

@@ -4,7 +4,7 @@ spring:
 
   servlet:
     multipart:
-      max-file-size: 500MB
+      max-file-size: 100MB
       max-request-size: 510MB
 
   modulith:
@@ -19,7 +19,7 @@ spring:
 
 application:
   file:
-    max-size: 500MB
+    max-size: 100MB
     expiration:
       min: 1m
       max: 7d

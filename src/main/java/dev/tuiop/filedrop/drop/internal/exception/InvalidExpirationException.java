@@ -1,12 +1,11 @@
 package dev.tuiop.filedrop.drop.internal.exception;
 
-import dev.tuiop.filedrop.common.exception.RequestValidationException;
+import dev.tuiop.filedrop.common.exception.BusinessException;
+import org.springframework.http.HttpStatus;
 
-import java.util.Map;
-
-public final class InvalidExpirationException extends RequestValidationException {
+public final class InvalidExpirationException extends BusinessException {
 
     public InvalidExpirationException(String reason) {
-        super("The supplied expiration time is invalid.", Map.of("expiresAt", reason));
+        super("INVALID_EXPIRATION", reason, HttpStatus.BAD_REQUEST.value());
     }
 }

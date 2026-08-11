@@ -26,7 +26,7 @@ public class FileDrop {
     @Column(name = "storage_key", nullable = false, unique = true )
     private String storageKey;
 
-    @Column(name = "sha256", nullable = false, unique = true )
+    @Column(name = "sha256", nullable = false )
     private String sha256;
 
     @Column(name = "download_token_hash", nullable = false, unique = true )

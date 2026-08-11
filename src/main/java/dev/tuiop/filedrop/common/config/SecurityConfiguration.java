@@ -1,4 +1,4 @@
-package dev.tuiop.filedrop.config;
+package dev.tuiop.filedrop.common.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

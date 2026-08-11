@@ -1,4 +1,4 @@
-package dev.tuiop.filedrop.drop.internal.exception;
+package dev.tuiop.filedrop.scanning.internal.exception;
 
 import dev.tuiop.filedrop.common.exception.BusinessException;
 import org.springframework.http.HttpStatus;

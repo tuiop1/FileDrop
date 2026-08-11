@@ -2,7 +2,7 @@ package dev.tuiop.filedrop.drop.internal;
 
 import dev.tuiop.filedrop.drop.internal.dto.CreateDropRequest;
 import dev.tuiop.filedrop.drop.internal.validation.CreateDropRequestValidator;
-import dev.tuiop.filedrop.drop.internal.validation.FileDropValidator;
+import dev.tuiop.filedrop.scanning.FileValidator;
 import dev.tuiop.filedrop.storage.TemporaryFileStorage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -16,7 +16,7 @@ public class FileDropService {
 
     private final FileDropRepository fileDropRepository;
     private final CreateDropRequestValidator createDropRequestValidator;
-    private final FileDropValidator fileDropValidator;
+    private final FileValidator fileDropValidator;
     private final TemporaryFileStorage temporaryFileStorage;
 
 
@@ -29,7 +29,12 @@ public class FileDropService {
 
         Path tempFile = temporaryFileStorage.store(file);
 
+        try{
 
+
+        } catch (Exception e) {
+
+        }
 
 
 

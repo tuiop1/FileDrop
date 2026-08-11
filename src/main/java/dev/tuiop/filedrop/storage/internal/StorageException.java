@@ -1,8 +1,10 @@
 package dev.tuiop.filedrop.storage.internal;
 
-public abstract class StorageException extends RuntimeException {
+import dev.tuiop.filedrop.common.exception.TechnicalException;
 
-    protected StorageException(String message, Throwable cause) {
-        super(message, cause);
+public abstract class StorageException extends TechnicalException {
+
+    protected StorageException(String code, String message, Throwable cause) {
+        super(code, message, cause);
     }
 }

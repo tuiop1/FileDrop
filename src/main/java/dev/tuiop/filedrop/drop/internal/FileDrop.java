@@ -1,4 +1,4 @@
-package dev.tuiop.filedrop.drop;
+package dev.tuiop.filedrop.drop.internal;
 
 import jakarta.persistence.*;
 import lombok.Getter;

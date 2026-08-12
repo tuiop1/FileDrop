@@ -1,7 +1,7 @@
 package dev.tuiop.filedrop.drop.internal;
 
 import dev.tuiop.filedrop.drop.internal.dto.CreateDropRequest;
-import dev.tuiop.filedrop.drop.internal.dto.FileDropResponse;
+import dev.tuiop.filedrop.drop.internal.dto.CreateDropResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -19,18 +19,18 @@ import org.springframework.web.multipart.MultipartFile;
 public class FileDropController {
 
     private final FileDropService fileDropService;
-    private final FileDropMapper fileDropMapper;
+
 
 
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<FileDropResponse> createDrop(
+    public ResponseEntity<CreateDropResponse> createDrop(
             @RequestPart("file") MultipartFile file,
           @Valid @RequestPart("metadata")CreateDropRequest request
 
 
-            ){
-    return ResponseEntity.status(HttpStatus.CREATED).body(fileDropMapper.toResponse(fileDropService.create(file,request)));
+            ) {
+    return ResponseEntity.status(HttpStatus.CREATED).body(fileDropService.create(file, request));
 
 
 

@@ -77,7 +77,10 @@ public class FileDrop {
     @PrePersist
     private void prePersist(){
         createdAt = Instant.now();
-
+        if(status == null){
+            status = FileDropStatus.AVAILABLE;
+        }
+        downloadCount = 0;
     }
 
 

@@ -2,8 +2,17 @@ package dev.tuiop.filedrop.drop.internal;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Embeddable
+@Getter
+@Builder
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
 public class EncryptionMetadataEntity {
 
     @Column(name = "encrypted_data_key", nullable = false)

@@ -19,6 +19,8 @@ spring:
 application:
 
   filedrop:
+    base-url: ${FILEDROP_BASE_URL:http://localhost:8080}
+
     temporary-storage:
       directory: ${FILEDROP_TEMP_DIR:${java.io.tmpdir}/filedrop}
 
@@ -31,8 +33,8 @@ application:
         endpoint: http://localhost:9000
         region: us-east-1
         bucket: filedrop
-        access-key: filedrop
-        secret-key: filedrop
+        access-key: ${FILEDROP_S3_ACCESS_KEY:filedrop}
+        secret-key: ${FILEDROP_S3_SECRET_KEY:filedrop-local-secret}
         path-style: true
 
 

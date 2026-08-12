@@ -1,19 +1,26 @@
 package dev.tuiop.filedrop.drop.internal;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.time.Instant;
 import java.util.UUID;
 
-@Getter
 @Entity
 @Table(name = "file_drops")
+@Builder
+@Getter
+@NoArgsConstructor
+@AllArgsConstructor
 public class FileDrop {
     @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "original_file_name", nullable = false)
+    @Column(name = "original_file_name", nullable = false, length = 255)
     private String originalFileName;
 
 
@@ -41,7 +48,7 @@ public class FileDrop {
 
     @Column(name = "created_at" )
     private Instant createdAt;
-    @Column(name = "expires_at" )
+    @Column(name = "expires_at", nullable = false)
     private Instant expiresAt;
     @Column(name = "deleted_at" )
     private Instant deletedAt;
@@ -60,6 +67,14 @@ public class FileDrop {
     @Version
     @Column(name = "version", nullable = false)
     private long version;
+
+
+    @PrePersist
+    private void prePersist(){
+        createdAt = Instant.now();
+
+    }
+
 
 }
 

@@ -11,4 +11,4 @@ services:
   clamav:
     image: clamav/clamav:latest
     ports:
-      - '3310'
+      - '3310:3310'

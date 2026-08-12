@@ -113,6 +113,7 @@ databaseChangeLog:
               ADD CONSTRAINT ck_file_drops_size_non_negative CHECK (size >= 0),
               ADD CONSTRAINT ck_file_drops_max_downloads CHECK (max_downloads BETWEEN 1 AND 100),
               ADD CONSTRAINT ck_file_drops_download_count_non_negative CHECK (download_count >= 0),
+              ADD CONSTRAINT ck_file_drops_download_count_not_above_max CHECK (download_count <= max_downloads),
               ADD CONSTRAINT ck_file_drops_status CHECK (status IN ('AVAILABLE', 'USED', 'EXPIRED', 'DELETED', 'FAILED'))
       rollback:
         - dropTable:

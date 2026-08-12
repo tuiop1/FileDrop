@@ -2,6 +2,7 @@ package dev.tuiop.filedrop.drop.internal;
 
 import dev.tuiop.filedrop.drop.internal.dto.CreateDropRequest;
 import dev.tuiop.filedrop.drop.internal.validation.CreateDropRequestValidator;
+import dev.tuiop.filedrop.integrity.ChecksumService;
 import dev.tuiop.filedrop.scanning.FileValidator;
 import dev.tuiop.filedrop.storage.TemporaryFileStorage;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +19,7 @@ public class FileDropService {
     private final CreateDropRequestValidator createDropRequestValidator;
     private final FileValidator fileDropValidator;
     private final TemporaryFileStorage temporaryFileStorage;
+    private final ChecksumService checksumService;
 
 
     public FileDrop create(MultipartFile file, CreateDropRequest request) {
@@ -32,6 +34,13 @@ public class FileDropService {
 
         try {
             String contentType = fileDropValidator.preStoreFileValidation(tempFile);
+
+            String sha256Checksum = checksumService.calculateSha256(tempFile);
+
+
+
+
+
 
             // Permanent storage and entity creation will be added here.
             return new FileDrop();

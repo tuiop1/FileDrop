@@ -22,6 +22,21 @@ application:
     temporary-storage:
       directory: ${FILEDROP_TEMP_DIR:${java.io.tmpdir}/filedrop}
 
+    encryption:
+      master-key: ${FILEDROP_MASTER_KEY:}
+      key-version: ${FILEDROP_MASTER_KEY_VERSION:1}
+
+    storage:
+      s3:
+        endpoint: http://localhost:9000
+        region: us-east-1
+        bucket: filedrop
+        access-key: filedrop
+        secret-key: filedrop
+        path-style: true
+
+
+
   file:
     max-size: 100MB
     expiration:

@@ -20,6 +20,11 @@ public class FileDrop {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @Embedded
+    private EncryptionMetadataEntity encryptionMetadataEntity;
+
+
+
     @Column(name = "original_file_name", nullable = false, length = 255)
     private String originalFileName;
 

@@ -1,5 +1,7 @@
 package dev.tuiop.filedrop.drop.internal;
 
+import dev.tuiop.filedrop.crypto.EncryptedFile;
+import dev.tuiop.filedrop.crypto.FileEncryptionService;
 import dev.tuiop.filedrop.drop.internal.dto.CreateDropRequest;
 import dev.tuiop.filedrop.drop.internal.validation.CreateDropRequestValidator;
 import dev.tuiop.filedrop.integrity.ChecksumService;
@@ -20,6 +22,7 @@ public class FileDropService {
     private final FileValidator fileDropValidator;
     private final TemporaryFileStorage temporaryFileStorage;
     private final ChecksumService checksumService;
+    private final FileEncryptionService fileEncryptionService;
 
 
     public FileDrop create(MultipartFile file, CreateDropRequest request) {
@@ -37,7 +40,7 @@ public class FileDropService {
 
             String sha256Checksum = checksumService.calculateSha256(tempFile);
 
-
+            EncryptedFile encryptedFile = fileEncryptionService.encrypt(tempFile);
 
 
 

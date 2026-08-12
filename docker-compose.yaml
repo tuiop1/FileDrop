@@ -1,14 +1,58 @@
 services:
   postgres:
-    image: 'postgres:latest'
+    image: 'postgres:18.4'
     environment:
-      - 'POSTGRES_DB=mydatabase'
-      - 'POSTGRES_PASSWORD=secret'
-      - 'POSTGRES_USER=myuser'
+      - 'POSTGRES_DB=postgres'
+      - 'POSTGRES_PASSWORD=postgres'
+      - 'POSTGRES_USER=postgres'
     ports:
       - '5432'
+
+    volumes:
+      - postgres_data:/var/lib/postgresql
 
   clamav:
     image: clamav/clamav:latest
     ports:
       - '3310:3310'
+
+
+  minio:
+    image: quay.io/minio/minio:latest
+    command: server /data --console-address ":9001"
+
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio
+
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+
+    volumes:
+      - minio_data:/data
+
+  minio-init:
+    image: quay.io/minio/mc:latest
+    depends_on:
+      - minio
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio
+    entrypoint: >
+      /bin/sh -c "
+        until /usr/bin/mc alias set local http://minio:9000
+          \"$${MINIO_ROOT_USER}\"
+          \"$${MINIO_ROOT_PASSWORD}\";
+        do
+          echo 'Waiting for MinIO...';
+          sleep 2;
+        done;
+
+        /usr/bin/mc mb --ignore-existing local/filedrop;
+        echo 'Bucket filedrop is ready.';
+      "
+
+volumes:
+  postgres_data:
+  minio_data:

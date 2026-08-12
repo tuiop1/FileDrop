@@ -78,11 +78,29 @@ public class FileDrop {
     private void prePersist(){
         createdAt = Instant.now();
         if(status == null){
-            status = FileDropStatus.AVAILABLE;
+            status = FileDropStatus.PENDING;
         }
         downloadCount = 0;
     }
 
+    void markAvailable() {
+        if (status != FileDropStatus.PENDING) {
+            throw new IllegalStateException(
+                    "Only a pending file drop can become available."
+            );
+        }
+
+        status = FileDropStatus.AVAILABLE;
+    }
+
+    void markFailed() {
+        if (status != FileDropStatus.PENDING && status != FileDropStatus.AVAILABLE) {
+            throw new IllegalStateException(
+                    "Only a pending or available file drop can become failed."
+            );
+        }
+
+        status = FileDropStatus.FAILED;
+    }
 
 }
-

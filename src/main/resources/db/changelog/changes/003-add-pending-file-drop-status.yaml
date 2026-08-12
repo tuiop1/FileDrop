@@ -1,0 +1,24 @@
+databaseChangeLog:
+  - changeSet:
+      id: 003-add-pending-file-drop-status
+      author: tuiop
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE file_drops
+              DROP CONSTRAINT ck_file_drops_status;
+
+              ALTER TABLE file_drops
+              ADD CONSTRAINT ck_file_drops_status
+              CHECK (status IN ('PENDING', 'AVAILABLE', 'USED', 'EXPIRED', 'DELETED', 'FAILED'));
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE file_drops
+              DROP CONSTRAINT ck_file_drops_status;
+
+              ALTER TABLE file_drops
+              ADD CONSTRAINT ck_file_drops_status
+              CHECK (status IN ('AVAILABLE', 'USED', 'EXPIRED', 'DELETED', 'FAILED'));

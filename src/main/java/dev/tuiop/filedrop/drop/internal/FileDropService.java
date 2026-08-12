@@ -55,7 +55,8 @@ public class FileDropService {
         Throwable processingFailure = null;
 
         EncryptedFile encryptedFile = null;
-        boolean objectStored = false;
+        FileDrop persistedDrop = null;
+        boolean uploadAttempted = false;
         String objectKey = null;
         try {
             String contentType = fileDropValidator.preStoreFileValidation(tempFile);
@@ -72,14 +73,6 @@ public class FileDropService {
             String managementTokenHash = tokenService.hashToken(managementToken);
 
 
-            try (InputStream inputStream = Files.newInputStream(encryptedFile.path())) {
-
-                objectStorage.store(objectKey, inputStream, encryptedFile.size());
-
-            }
-            objectStored = true;
-
-
             FileDrop fileDrop = FileDrop.builder()
                     .encryptionMetadataEntity(encryptionMetadataMapper.toEntity(encryptedFile.encryptionMetadata()))
                     .originalFileName(file.getOriginalFilename())
@@ -92,32 +85,44 @@ public class FileDropService {
                     .passwordHash(fileDropPassword)
                     .expiresAt(request.expiresAt())
                     .maxDownloads(request.maxDownloads())
+                    .status(FileDropStatus.PENDING)
                     .build();
 
             String downloadUrl = createDownloadUrl(downloadToken);
 
-            FileDrop saved = fileDropRepository.saveAndFlush(fileDrop);
+            persistedDrop = fileDropRepository.saveAndFlush(fileDrop);
+
+            uploadAttempted = true;
+
+            try (InputStream inputStream = Files.newInputStream(encryptedFile.path())) {
+                objectStorage.store(objectKey, inputStream, encryptedFile.size());
+            }
+
+            persistedDrop.markAvailable();
+            FileDrop availableDrop = fileDropRepository.saveAndFlush(persistedDrop);
 
             return CreateDropResponse.builder()
-                    .id(saved.getId())
+                    .id(availableDrop.getId())
                     .managementToken(managementToken)
                     .downloadUrl(downloadUrl)
-                    .expiresAt(fileDrop.getExpiresAt())
+                    .expiresAt(availableDrop.getExpiresAt())
                     .build();
 
 
         } catch (IOException exception) {
             DropCreationException dropCreationException = new DropCreationException(exception);
             processingFailure = dropCreationException;
+            markCreationFailed(persistedDrop, dropCreationException);
             throw dropCreationException;
         } catch (RuntimeException | Error exception) {
             processingFailure = exception;
+            markCreationFailed(persistedDrop, exception);
             throw exception;
         } finally {
             cleanupResources(
                     tempFile,
                     encryptedFile,
-                    objectStored,
+                    uploadAttempted,
                     objectKey,
                     processingFailure
             );
@@ -133,7 +138,7 @@ public class FileDropService {
     private void cleanupResources(
             Path plaintextFile,
             EncryptedFile encryptedFile,
-            boolean objectStored,
+            boolean uploadAttempted,
             String objectKey,
             Throwable processingFailure
     ) {
@@ -151,7 +156,7 @@ public class FileDropService {
             );
         }
 
-        if (objectStored && processingFailure != null) {
+        if (uploadAttempted && processingFailure != null) {
             cleanupFailure = attemptCleanup(
                     () -> objectStorage.delete(objectKey),
                     cleanupFailure
@@ -168,6 +173,22 @@ public class FileDropService {
         }
 
         throw cleanupFailure;
+    }
+
+    private void markCreationFailed(
+            FileDrop persistedDrop,
+            Throwable processingFailure
+    ) {
+        if (persistedDrop == null) {
+            return;
+        }
+
+        try {
+            persistedDrop.markFailed();
+            fileDropRepository.saveAndFlush(persistedDrop);
+        } catch (RuntimeException statusUpdateFailure) {
+            processingFailure.addSuppressed(statusUpdateFailure);
+        }
     }
 
     private RuntimeException attemptCleanup(

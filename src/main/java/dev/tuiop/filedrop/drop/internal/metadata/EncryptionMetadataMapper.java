@@ -1,4 +1,4 @@
-package dev.tuiop.filedrop.drop.internal;
+package dev.tuiop.filedrop.drop.internal.metadata;
 
 import dev.tuiop.filedrop.crypto.EncryptionMetadata;
 import org.mapstruct.Mapper;

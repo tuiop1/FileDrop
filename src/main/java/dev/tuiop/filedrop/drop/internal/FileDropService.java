@@ -13,11 +13,13 @@ import dev.tuiop.filedrop.drop.internal.exception.DropDownloadPreparationExcepti
 import dev.tuiop.filedrop.drop.internal.exception.DropIntegrityException;
 import dev.tuiop.filedrop.drop.internal.exception.FileDropExpiredException;
 import dev.tuiop.filedrop.drop.internal.exception.FileDropNotFoundException;
+import dev.tuiop.filedrop.drop.internal.metadata.EncryptionMetadataMapper;
 import dev.tuiop.filedrop.drop.internal.validation.CreateDropRequestValidator;
 import dev.tuiop.filedrop.integrity.ChecksumService;
 import dev.tuiop.filedrop.scanning.FileValidator;
 import dev.tuiop.filedrop.storage.ObjectStorage;
 import dev.tuiop.filedrop.storage.TemporaryFileStorage;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -168,6 +170,21 @@ public class FileDropService {
         }
     }
 
+    @Transactional
+    public void requestDeletion(UUID id, String managementToken) {
+        String managementTokenHash = tokenService.hashToken(managementToken);
+        FileDrop drop = fileDropRepository.findByIdAndManagementTokenHashForUpdate(id, managementTokenHash).
+                orElseThrow(() -> new FileDropNotFoundException());
+
+        if(drop.getStatus() == FileDropStatus.DELETED || drop.getStatus() == FileDropStatus.DELETION_PENDING){
+            return;
+        }
+        drop.markDeletionPending();
+        fileDropRepository.save(drop);
+
+
+    }
+
     private FileDrop reserveDownload(String tokenHash) {
         return transactionTemplate.execute(status -> {
             FileDrop drop = findByTokenHashAndLock(tokenHash);
@@ -194,10 +211,7 @@ public class FileDropService {
     }
 
     private void validateDownload(FileDrop drop) {
-        if (drop.getStatus() == FileDropStatus.USED) {
-            throw new DownloadLimitExceededException();
-        }
-        if (drop.getStatus() != FileDropStatus.AVAILABLE || drop.getDeletedAt() != null) {
+        if (drop.getStatus() != FileDropStatus.AVAILABLE) {
             throw new FileDropNotFoundException();
         }
         if (drop.isExpired(clock.instant())) {
@@ -210,9 +224,8 @@ public class FileDropService {
 
     private void registerDownload(FileDrop drop) {
         drop.increaseDownloadCount();
-
-        if (drop.getDownloadCount().equals(drop.getMaxDownloads())) {
-            drop.markUsed();
+        if(drop.getDownloadsRemaining() == 0){
+            drop.markDeletionPending();
         }
     }
 
@@ -366,4 +379,6 @@ public class FileDropService {
 
         return previousFailure;
     }
+
+
 }

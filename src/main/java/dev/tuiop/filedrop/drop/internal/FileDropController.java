@@ -11,6 +11,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 import java.nio.charset.StandardCharsets;
+import java.util.UUID;
 
 @RequestMapping("/api/v1/drops")
 @RestController
@@ -56,6 +57,13 @@ public class FileDropController {
 
 
 
+
+    }
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable UUID id,
+                                       @RequestHeader("X-Management-Token") String managementToken){
+        fileDropService.requestDeletion(id, managementToken);
+        return ResponseEntity.noContent().build();
 
     }
 

@@ -1,4 +1,4 @@
-package dev.tuiop.filedrop.drop.internal;
+package dev.tuiop.filedrop.drop.internal.metadata;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;

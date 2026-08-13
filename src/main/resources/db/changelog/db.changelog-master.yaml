@@ -5,3 +5,5 @@ databaseChangeLog:
       file: db/changelog/changes/002-add-encryption-metadata.yaml
   - include:
       file: db/changelog/changes/003-add-pending-file-drop-status.yaml
+  - include:
+      file: db/changelog/changes/004-simplify-file-drop-statuses.yaml

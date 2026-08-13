@@ -19,14 +19,16 @@ class SecurityConfiguration {
 	SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 		RequestMatcher createDrop = withDefaults()
 					.matcher(HttpMethod.POST, "/api/v1/drops");
-		RequestMatcher downloadDrop = withDefaults()
-					.matcher(HttpMethod.GET, "/api/v1/drops/d/{token}");
+			RequestMatcher downloadDrop = withDefaults()
+						.matcher(HttpMethod.GET, "/api/v1/drops/d/{token}");
+			RequestMatcher deleteDrop = withDefaults()
+						.matcher(HttpMethod.DELETE, "/api/v1/drops/{id}");
 
 		http
 					.csrf(csrf -> csrf.disable())
 					.authorizeHttpRequests(authorize -> authorize
 							.dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
-								.requestMatchers(createDrop, downloadDrop).permitAll()
+									.requestMatchers(createDrop, downloadDrop, deleteDrop).permitAll()
 						.anyRequest().denyAll()
 				);
 

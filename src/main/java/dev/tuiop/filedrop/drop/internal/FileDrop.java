@@ -8,6 +8,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.util.Objects;
 import java.util.UUID;
 
 @Entity
@@ -26,7 +27,7 @@ public class FileDrop {
 
 
 
-    @Column(name = "original_file_name", nullable = false, length = 255)
+    @Column(name = "original_file_name", nullable = false)
     private String originalFileName;
 
 
@@ -115,7 +116,17 @@ public class FileDrop {
     int getDownloadsRemaining() {
         return maxDownloads - downloadCount;
     }
-    void markDeletionPending() {
+    public void markDeletionPending() {
         status = FileDropStatus.DELETION_PENDING;
+    }
+    public void markDeleted(Instant deletedAt) {
+        Objects.requireNonNull(deletedAt, "deletedAt must not be null");
+
+        if (status == FileDropStatus.DELETED) {
+            return;
+        }
+
+        status = FileDropStatus.DELETED;
+        this.deletedAt = deletedAt;
     }
 }

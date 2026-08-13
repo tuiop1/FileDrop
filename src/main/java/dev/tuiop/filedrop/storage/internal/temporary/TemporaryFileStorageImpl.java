@@ -16,7 +16,7 @@ public class TemporaryFileStorageImpl implements TemporaryFileStorage {
     private final Path tempDirectory;
 
     public TemporaryFileStorageImpl(
-            @Value("${application.filedrop.temporary-storage.directory}") Path tempDirectory
+            @Value("${application.temporary-storage.directory}") Path tempDirectory
     ) {
         this.tempDirectory = tempDirectory;
     }

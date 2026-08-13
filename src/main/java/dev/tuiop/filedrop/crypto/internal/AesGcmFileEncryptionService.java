@@ -8,15 +8,18 @@ import dev.tuiop.filedrop.crypto.internal.exception.FileEncryptionException;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.Cipher;
+import javax.crypto.CipherInputStream;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.GeneralSecurityException;
+import java.security.InvalidKeyException;
 import java.security.SecureRandom;
 import java.util.Arrays;
 
@@ -176,6 +179,50 @@ public class AesGcmFileEncryptionService implements FileEncryptionService {
 
     @Override
     public InputStream decrypt(InputStream encryptedFile, EncryptionMetadata metadata) {
-        return null;
+        try {
+            SecretKey dataKey = decryptDataKey(metadata);
+            Cipher fileCipher = createDecryptionCipher(dataKey, metadata.fileIv());
+
+            return new CipherInputStream(encryptedFile, fileCipher);
+        } catch (GeneralSecurityException | RuntimeException exception) {
+            throw new FileEncryptionException("Failed to decrypt file.", exception);
+        }
+    }
+
+    private SecretKey decryptDataKey(EncryptionMetadata metadata)
+            throws GeneralSecurityException {
+        if (metadata.keyVersion() != masterKeyProvider.getVersion()) {
+            throw new InvalidKeyException(
+                    "Master key version %d is not available."
+                            .formatted(metadata.keyVersion())
+            );
+        }
+
+        Cipher keyCipher = createDecryptionCipher(
+                masterKeyProvider.getKey(),
+                metadata.keyIv()
+        );
+        byte[] rawDataKey = keyCipher.doFinal(metadata.encryptedDataKey());
+
+        try {
+            if (rawDataKey.length != AES_KEY_SIZE_BITS / Byte.SIZE) {
+                throw new InvalidKeyException("Decrypted data key has an invalid size.");
+            }
+
+            return new SecretKeySpec(rawDataKey, "AES");
+        } finally {
+            Arrays.fill(rawDataKey, (byte) 0);
+        }
+    }
+
+    private Cipher createDecryptionCipher(SecretKey key, byte[] iv)
+            throws GeneralSecurityException {
+        Cipher cipher = Cipher.getInstance(CIPHER_TRANSFORMATION);
+        cipher.init(
+                Cipher.DECRYPT_MODE,
+                key,
+                new GCMParameterSpec(GCM_TAG_SIZE_BITS, iv)
+        );
+        return cipher;
     }
 }

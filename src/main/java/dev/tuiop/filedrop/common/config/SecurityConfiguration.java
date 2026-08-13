@@ -18,13 +18,15 @@ class SecurityConfiguration {
 	@Bean
 	SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 		RequestMatcher createDrop = withDefaults()
-				.matcher(HttpMethod.POST, "/api/v1/drops");
+					.matcher(HttpMethod.POST, "/api/v1/drops");
+		RequestMatcher downloadDrop = withDefaults()
+					.matcher(HttpMethod.GET, "/api/v1/drops/d/{token}");
 
 		http
 					.csrf(csrf -> csrf.disable())
 					.authorizeHttpRequests(authorize -> authorize
 							.dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
-							.requestMatchers(createDrop).permitAll()
+								.requestMatchers(createDrop, downloadDrop).permitAll()
 						.anyRequest().denyAll()
 				);
 

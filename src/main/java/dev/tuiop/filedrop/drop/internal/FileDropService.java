@@ -17,15 +17,16 @@ import dev.tuiop.filedrop.scanning.FileValidator;
 import dev.tuiop.filedrop.storage.ObjectStorage;
 import dev.tuiop.filedrop.storage.TemporaryFileStorage;
 import lombok.RequiredArgsConstructor;
-import org.hibernate.Transaction;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.util.UUID;
 
 @Service
@@ -44,6 +45,7 @@ public class FileDropService {
     private final TokenService tokenService;
     private final FileDropProperties fileDropProperties;
     private final TransactionTemplate transactionTemplate;
+    private final Clock clock;
 
 
     public CreateDropResponse create(MultipartFile file, CreateDropRequest request) {
@@ -58,7 +60,6 @@ public class FileDropService {
         }
 
         Path tempFile = temporaryFileStorage.store(file);
-
         Throwable processingFailure = null;
 
         EncryptedFile encryptedFile = null;
@@ -66,6 +67,7 @@ public class FileDropService {
         boolean uploadAttempted = false;
         String objectKey = null;
         try {
+            long size = Files.size(tempFile);
             String contentType = fileDropValidator.preStoreFileValidation(tempFile);
 
             String sha256Checksum = checksumService.calculateSha256(tempFile);
@@ -84,7 +86,7 @@ public class FileDropService {
                     .encryptionMetadataEntity(encryptionMetadataMapper.toEntity(encryptedFile.encryptionMetadata()))
                     .originalFileName(file.getOriginalFilename())
                     .detectedContentType(contentType)
-                    .size(encryptedFile.size())
+                    .size(size)
                     .storageKey(objectKey)
                     .sha256(sha256Checksum)
                     .downloadTokenHash(downloadTokenHash)
@@ -140,14 +142,29 @@ public class FileDropService {
 
         FileDrop drop = prepareDownload(token);
 
+        StreamingResponseBody body =
+                outputStream -> {
+            try(InputStream encrypted = objectStorage.load(drop.getStorageKey());
+
+            InputStream decrypted =
+                    fileEncryptionService.decrypt(encrypted,
+                            encryptionMetadataMapper.toRecord(drop.getEncryptionMetadataEntity()))){
+
+                decrypted.transferTo(outputStream);
+            }
+
+                };
 
 
-
-
-
+    return new DropDownloadResult(drop.getOriginalFileName(),
+            drop.getDetectedContentType(),
+            drop.getSize(),
+            drop.getDownloadsRemaining(),
+            body);
 
 
     }
+
 
 
     private FileDrop prepareDownload(String token){
@@ -156,8 +173,7 @@ public class FileDropService {
             validateToken(token);
             FileDrop drop = findByTokenAndLock(token);
             validateDownload(drop);
-            drop.increaseDownloadCount();
-            fileDropRepository.save(drop);
+            registerDownload(drop);
             return drop;
         });
 
@@ -177,20 +193,31 @@ public class FileDropService {
     }
 
     private void validateDownload(FileDrop drop) {
+        if (drop.getStatus() == FileDropStatus.USED) {
+            throw new DownloadLimitExceededException();
+        }
+        if (drop.getStatus() != FileDropStatus.AVAILABLE || drop.getDeletedAt() != null) {
+            throw new FileDropNotFoundException();
+        }
+        if (drop.isExpired(clock.instant())) {
+            throw new FileDropExpiredException();
+        }
         if (drop.getDownloadCount() >= drop.getMaxDownloads()) {
             throw new DownloadLimitExceededException();
         }
-        if (drop.isExpired()) {
-            throw new FileDropExpiredException();
+    }
+
+    private void registerDownload(FileDrop drop) {
+        drop.increaseDownloadCount();
+
+        if (drop.getDownloadCount().equals(drop.getMaxDownloads())) {
+            drop.markUsed();
         }
     }
 
-
-
-
     private String createDownloadUrl(String downloadToken) {
         return fileDropProperties.baseUrl()
-                .resolve("/d/" + downloadToken)
+                .resolve("/api/v1/drops/d/" + downloadToken)
                 .toString();
     }
 

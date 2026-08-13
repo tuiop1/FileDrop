@@ -1,7 +1,5 @@
 package dev.tuiop.filedrop.drop.internal;
 
-import dev.tuiop.filedrop.drop.internal.exception.DownloadLimitExceededException;
-import dev.tuiop.filedrop.drop.internal.exception.FileDropExpiredException;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -105,19 +103,20 @@ public class FileDrop {
         status = FileDropStatus.FAILED;
     }
 
-    boolean isExpired(){
-        return Instant.now().isAfter(expiresAt);
+    boolean isExpired(Instant now) {
+        return !now.isBefore(expiresAt);
     }
 
-    void increaseDownloadCount(){
-        if (downloadCount >= maxDownloads) {
-            throw new DownloadLimitExceededException();
-        }
-        if (isExpired()) {
-            throw new FileDropExpiredException();
-        }
-
+    void increaseDownloadCount() {
         downloadCount++;
+    }
+
+    void markUsed() {
+        status = FileDropStatus.USED;
+    }
+
+    int getDownloadsRemaining() {
+        return maxDownloads - downloadCount;
     }
 
 }

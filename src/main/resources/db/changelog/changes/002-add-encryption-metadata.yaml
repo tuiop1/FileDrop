@@ -1,0 +1,41 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002-add-encryption-metadata
+      author: tuiop
+      changes:
+        - addColumn:
+            tableName: file_drops
+            columns:
+              - column:
+                  name: encrypted_data_key
+                  type: BYTEA
+                  constraints:
+                    nullable: false
+              - column:
+                  name: file_iv
+                  type: BYTEA
+                  constraints:
+                    nullable: false
+              - column:
+                  name: key_iv
+                  type: BYTEA
+                  constraints:
+                    nullable: false
+              - column:
+                  name: key_version
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: file_drops
+            columnName: key_version
+        - dropColumn:
+            tableName: file_drops
+            columnName: key_iv
+        - dropColumn:
+            tableName: file_drops
+            columnName: file_iv
+        - dropColumn:
+            tableName: file_drops
+            columnName: encrypted_data_key

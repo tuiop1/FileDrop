@@ -1,0 +1,7 @@
+databaseChangeLog:
+  - include:
+      file: db/changelog/changes/001-create-file-drops.yaml
+  - include:
+      file: db/changelog/changes/002-add-encryption-metadata.yaml
+  - include:
+      file: db/changelog/changes/003-add-pending-file-drop-status.yaml

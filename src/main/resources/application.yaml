@@ -1,3 +1,68 @@
 spring:
   application:
     name: FileDrop
+
+  datasource:
+    url: ${FILEDROP_DB_URL:jdbc:postgresql://localhost:5432/postgres}
+    username: ${FILEDROP_DB_USERNAME:postgres}
+    password: ${FILEDROP_DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+
+  servlet:
+
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 110MB
+
+  modulith:
+    events:
+      republish-outstanding-events-on-restart:  true
+      jdbc:
+        schema-initialization:
+          enabled: true
+
+
+
+application:
+
+  filedrop:
+    base-url: ${FILEDROP_BASE_URL:http://localhost:8080}
+
+    temporary-storage:
+      directory: ${FILEDROP_TEMP_DIR:${java.io.tmpdir}/filedrop}
+
+    encryption:
+      master-key: ${FILEDROP_MASTER_KEY:}
+      key-version: ${FILEDROP_MASTER_KEY_VERSION:1}
+
+    storage:
+      s3:
+        endpoint: http://localhost:9000
+        region: us-east-1
+        bucket: filedrop
+        access-key: ${FILEDROP_S3_ACCESS_KEY:filedrop}
+        secret-key: ${FILEDROP_S3_SECRET_KEY:filedrop-local-secret}
+        path-style: true
+
+
+
+  file:
+    max-size: 100MB
+    expiration:
+      min: 1m
+      max: 7d
+
+
+
+clamav:
+  host: localhost
+  port: 3310
+  connect-timeout: 2s
+  read-timeout: 30s
+server:
+  port: 8080

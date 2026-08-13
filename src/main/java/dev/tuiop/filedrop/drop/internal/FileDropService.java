@@ -6,14 +6,20 @@ import dev.tuiop.filedrop.crypto.EncryptedFile;
 import dev.tuiop.filedrop.crypto.FileEncryptionService;
 import dev.tuiop.filedrop.drop.internal.dto.CreateDropRequest;
 import dev.tuiop.filedrop.drop.internal.dto.CreateDropResponse;
+import dev.tuiop.filedrop.drop.internal.dto.DropDownloadResult;
+import dev.tuiop.filedrop.drop.internal.exception.DownloadLimitExceededException;
 import dev.tuiop.filedrop.drop.internal.exception.DropCreationException;
+import dev.tuiop.filedrop.drop.internal.exception.FileDropExpiredException;
+import dev.tuiop.filedrop.drop.internal.exception.FileDropNotFoundException;
 import dev.tuiop.filedrop.drop.internal.validation.CreateDropRequestValidator;
 import dev.tuiop.filedrop.integrity.ChecksumService;
 import dev.tuiop.filedrop.scanning.FileValidator;
 import dev.tuiop.filedrop.storage.ObjectStorage;
 import dev.tuiop.filedrop.storage.TemporaryFileStorage;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.Transaction;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -37,6 +43,7 @@ public class FileDropService {
     private final PasswordService passwordService;
     private final TokenService tokenService;
     private final FileDropProperties fileDropProperties;
+    private final TransactionTemplate transactionTemplate;
 
 
     public CreateDropResponse create(MultipartFile file, CreateDropRequest request) {
@@ -128,6 +135,58 @@ public class FileDropService {
             );
         }
     }
+
+    public DropDownloadResult getFileDropAndMetadata(String token){
+
+        FileDrop drop = prepareDownload(token);
+
+
+
+
+
+
+
+
+    }
+
+
+    private FileDrop prepareDownload(String token){
+        return transactionTemplate.execute(status -> {
+
+            validateToken(token);
+            FileDrop drop = findByTokenAndLock(token);
+            validateDownload(drop);
+            drop.increaseDownloadCount();
+            fileDropRepository.save(drop);
+            return drop;
+        });
+
+    }
+
+    private void validateToken(String token) {
+        if (token == null || !token.matches("^[A-Za-z0-9_-]{43}$")) {
+            throw new FileDropNotFoundException();
+        }
+    }
+
+    private FileDrop findByTokenAndLock(String token) {
+        String tokenHash = tokenService.hashToken(token);
+
+        return fileDropRepository.findByDownloadTokenHash(tokenHash)
+                .orElseThrow(FileDropNotFoundException::new);
+    }
+
+    private void validateDownload(FileDrop drop) {
+        if (drop.getDownloadCount() >= drop.getMaxDownloads()) {
+            throw new DownloadLimitExceededException();
+        }
+        if (drop.isExpired()) {
+            throw new FileDropExpiredException();
+        }
+    }
+
+
+
 
     private String createDownloadUrl(String downloadToken) {
         return fileDropProperties.baseUrl()

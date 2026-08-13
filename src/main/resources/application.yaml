@@ -2,7 +2,19 @@ spring:
   application:
     name: FileDrop
 
+  datasource:
+    url: ${FILEDROP_DB_URL:jdbc:postgresql://localhost:5432/postgres}
+    username: ${FILEDROP_DB_USERNAME:postgres}
+    password: ${FILEDROP_DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+
   servlet:
+
     multipart:
       max-file-size: 100MB
       max-request-size: 110MB
@@ -52,3 +64,5 @@ clamav:
   port: 3310
   connect-timeout: 2s
   read-timeout: 30s
+server:
+  port: 8080

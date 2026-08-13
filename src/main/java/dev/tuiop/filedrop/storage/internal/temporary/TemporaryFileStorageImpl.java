@@ -63,6 +63,24 @@ public class TemporaryFileStorageImpl implements TemporaryFileStorage {
         }
     }
 
+    @Override
+    public Path create() {
+        try {
+            Files.createDirectories(tempDirectory);
+            return Files.createTempFile(
+                    tempDirectory,
+                    "filedrop-download-",
+                    ".tmp"
+            );
+        } catch (IOException | RuntimeException exception) {
+            throw new TemporaryFileStorageException(
+                    "Failed to create a temporary download file.",
+                    exception
+            );
+        }
+    }
+
+    @Override
     public void delete(Path path) {
         try {
             Files.deleteIfExists(path);

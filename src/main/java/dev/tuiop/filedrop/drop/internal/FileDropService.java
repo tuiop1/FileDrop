@@ -9,6 +9,8 @@ import dev.tuiop.filedrop.drop.internal.dto.CreateDropResponse;
 import dev.tuiop.filedrop.drop.internal.dto.DropDownloadResult;
 import dev.tuiop.filedrop.drop.internal.exception.DownloadLimitExceededException;
 import dev.tuiop.filedrop.drop.internal.exception.DropCreationException;
+import dev.tuiop.filedrop.drop.internal.exception.DropDownloadPreparationException;
+import dev.tuiop.filedrop.drop.internal.exception.DropIntegrityException;
 import dev.tuiop.filedrop.drop.internal.exception.FileDropExpiredException;
 import dev.tuiop.filedrop.drop.internal.exception.FileDropNotFoundException;
 import dev.tuiop.filedrop.drop.internal.validation.CreateDropRequestValidator;
@@ -17,6 +19,7 @@ import dev.tuiop.filedrop.scanning.FileValidator;
 import dev.tuiop.filedrop.storage.ObjectStorage;
 import dev.tuiop.filedrop.storage.TemporaryFileStorage;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
@@ -24,6 +27,7 @@ import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBo
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
@@ -31,6 +35,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class FileDropService {
 
     private final FileDropRepository fileDropRepository;
@@ -138,45 +143,38 @@ public class FileDropService {
         }
     }
 
-    public DropDownloadResult getFileDropAndMetadata(String token){
+    public DropDownloadResult getFileDropAndMetadata(String token) {
+        validateToken(token);
+        String tokenHash = tokenService.hashToken(token);
 
-        FileDrop drop = prepareDownload(token);
+        FileDrop candidate = findByTokenHash(tokenHash);
+        validateDownload(candidate);
 
-        StreamingResponseBody body =
-                outputStream -> {
-            try(InputStream encrypted = objectStorage.load(drop.getStorageKey());
+        Path stagedFile = stageAndVerify(candidate);
 
-            InputStream decrypted =
-                    fileEncryptionService.decrypt(encrypted,
-                            encryptionMetadataMapper.toRecord(drop.getEncryptionMetadataEntity()))){
+        try {
+            FileDrop reservedDrop = reserveDownload(tokenHash);
 
-                decrypted.transferTo(outputStream);
-            }
-
-                };
-
-
-    return new DropDownloadResult(drop.getOriginalFileName(),
-            drop.getDetectedContentType(),
-            drop.getSize(),
-            drop.getDownloadsRemaining(),
-            body);
-
-
+            return new DropDownloadResult(
+                    reservedDrop.getOriginalFileName(),
+                    reservedDrop.getDetectedContentType(),
+                    reservedDrop.getSize(),
+                    reservedDrop.getDownloadsRemaining(),
+                    createDownloadBody(stagedFile)
+            );
+        } catch (RuntimeException | Error exception) {
+            deleteStagedFile(stagedFile, exception);
+            throw exception;
+        }
     }
 
-
-
-    private FileDrop prepareDownload(String token){
+    private FileDrop reserveDownload(String tokenHash) {
         return transactionTemplate.execute(status -> {
-
-            validateToken(token);
-            FileDrop drop = findByTokenAndLock(token);
+            FileDrop drop = findByTokenHashAndLock(tokenHash);
             validateDownload(drop);
             registerDownload(drop);
             return drop;
         });
-
     }
 
     private void validateToken(String token) {
@@ -185,10 +183,13 @@ public class FileDropService {
         }
     }
 
-    private FileDrop findByTokenAndLock(String token) {
-        String tokenHash = tokenService.hashToken(token);
-
+    private FileDrop findByTokenHash(String tokenHash) {
         return fileDropRepository.findByDownloadTokenHash(tokenHash)
+                .orElseThrow(FileDropNotFoundException::new);
+    }
+
+    private FileDrop findByTokenHashAndLock(String tokenHash) {
+        return fileDropRepository.findByDownloadTokenHashForUpdate(tokenHash)
                 .orElseThrow(FileDropNotFoundException::new);
     }
 
@@ -212,6 +213,78 @@ public class FileDropService {
 
         if (drop.getDownloadCount().equals(drop.getMaxDownloads())) {
             drop.markUsed();
+        }
+    }
+
+    private Path stageAndVerify(FileDrop drop) {
+        Path stagedFile = temporaryFileStorage.create();
+
+        try {
+            try (InputStream encrypted = objectStorage.load(drop.getStorageKey());
+                 InputStream decrypted = fileEncryptionService.decrypt(
+                         encrypted,
+                         encryptionMetadataMapper.toRecord(
+                                 drop.getEncryptionMetadataEntity()
+                         )
+                 );
+                 OutputStream stagedOutput = Files.newOutputStream(stagedFile)) {
+                decrypted.transferTo(stagedOutput);
+            }
+
+            verifyStagedFile(drop, stagedFile);
+            return stagedFile;
+        } catch (IOException exception) {
+            DropDownloadPreparationException preparationException =
+                    new DropDownloadPreparationException(exception);
+            deleteStagedFile(stagedFile, preparationException);
+            throw preparationException;
+        } catch (RuntimeException | Error exception) {
+            deleteStagedFile(stagedFile, exception);
+            throw exception;
+        }
+    }
+
+    private void verifyStagedFile(FileDrop drop, Path stagedFile)
+            throws IOException {
+        long actualSize = Files.size(stagedFile);
+        if (actualSize != drop.getSize()) {
+            throw new DropIntegrityException(
+                    "Downloaded file size does not match the stored size."
+            );
+        }
+
+        String actualChecksum = checksumService.calculateSha256(stagedFile);
+        if (!actualChecksum.equalsIgnoreCase(drop.getSha256())) {
+            throw new DropIntegrityException(
+                    "Downloaded file checksum does not match the stored checksum."
+            );
+        }
+    }
+
+    private StreamingResponseBody createDownloadBody(Path stagedFile) {
+        return outputStream -> {
+            try (InputStream inputStream = Files.newInputStream(stagedFile)) {
+                inputStream.transferTo(outputStream);
+            } finally {
+                deleteStagedFile(stagedFile, null);
+            }
+        };
+    }
+
+    private void deleteStagedFile(Path stagedFile, Throwable failure) {
+        try {
+            temporaryFileStorage.delete(stagedFile);
+        } catch (RuntimeException cleanupFailure) {
+            if (failure != null) {
+                failure.addSuppressed(cleanupFailure);
+                return;
+            }
+
+            log.error(
+                    "Failed to delete staged download file '{}'.",
+                    stagedFile,
+                    cleanupFailure
+            );
         }
     }
 

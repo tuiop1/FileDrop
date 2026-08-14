@@ -1,5 +1,6 @@
 package dev.tuiop.filedrop.drop.internal;
 
+import dev.tuiop.filedrop.drop.internal.metadata.EncryptionMetadataEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -7,6 +8,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.util.Objects;
 import java.util.UUID;
 
 @Entity
@@ -25,7 +27,7 @@ public class FileDrop {
 
 
 
-    @Column(name = "original_file_name", nullable = false, length = 255)
+    @Column(name = "original_file_name", nullable = false)
     private String originalFileName;
 
 
@@ -111,12 +113,35 @@ public class FileDrop {
         downloadCount++;
     }
 
-    void markUsed() {
-        status = FileDropStatus.USED;
-    }
-
     int getDownloadsRemaining() {
         return maxDownloads - downloadCount;
     }
 
+    void changeExpiration(Instant expiresAt) {
+        this.expiresAt = Objects.requireNonNull(expiresAt, "expiresAt must not be null");
+    }
+
+    void changeMaxDownloads(int maxDownloads) {
+        if (maxDownloads < 1 || maxDownloads > 100 || maxDownloads <= downloadCount) {
+            throw new IllegalArgumentException(
+                    "Maximum downloads must be between 1 and 100 and exceed the current download count."
+            );
+        }
+
+        this.maxDownloads = maxDownloads;
+    }
+
+    public void markDeletionPending() {
+        status = FileDropStatus.DELETION_PENDING;
+    }
+    public void markDeleted(Instant deletedAt) {
+        Objects.requireNonNull(deletedAt, "deletedAt must not be null");
+
+        if (status == FileDropStatus.DELETED) {
+            return;
+        }
+
+        status = FileDropStatus.DELETED;
+        this.deletedAt = deletedAt;
+    }
 }

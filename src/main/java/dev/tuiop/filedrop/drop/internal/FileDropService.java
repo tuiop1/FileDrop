@@ -7,17 +7,24 @@ import dev.tuiop.filedrop.crypto.FileEncryptionService;
 import dev.tuiop.filedrop.drop.internal.dto.CreateDropRequest;
 import dev.tuiop.filedrop.drop.internal.dto.CreateDropResponse;
 import dev.tuiop.filedrop.drop.internal.dto.DropDownloadResult;
+import dev.tuiop.filedrop.drop.internal.dto.FileDropDetailsResponse;
+import dev.tuiop.filedrop.drop.internal.dto.UpdateExpirationRequest;
+import dev.tuiop.filedrop.drop.internal.dto.UpdateMaxDownloadsRequest;
 import dev.tuiop.filedrop.drop.internal.exception.DownloadLimitExceededException;
 import dev.tuiop.filedrop.drop.internal.exception.DropCreationException;
 import dev.tuiop.filedrop.drop.internal.exception.DropDownloadPreparationException;
 import dev.tuiop.filedrop.drop.internal.exception.DropIntegrityException;
 import dev.tuiop.filedrop.drop.internal.exception.FileDropExpiredException;
 import dev.tuiop.filedrop.drop.internal.exception.FileDropNotFoundException;
-import dev.tuiop.filedrop.drop.internal.validation.CreateDropRequestValidator;
+import dev.tuiop.filedrop.drop.internal.exception.FileDropNotEditableException;
+import dev.tuiop.filedrop.drop.internal.exception.InvalidMaxDownloadsException;
+import dev.tuiop.filedrop.drop.internal.metadata.EncryptionMetadataMapper;
+import dev.tuiop.filedrop.drop.internal.validation.DropRequestValidator;
 import dev.tuiop.filedrop.integrity.ChecksumService;
 import dev.tuiop.filedrop.scanning.FileValidator;
 import dev.tuiop.filedrop.storage.ObjectStorage;
 import dev.tuiop.filedrop.storage.TemporaryFileStorage;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -39,7 +46,7 @@ import java.util.UUID;
 public class FileDropService {
 
     private final FileDropRepository fileDropRepository;
-    private final CreateDropRequestValidator createDropRequestValidator;
+    private final DropRequestValidator dropRequestValidator;
     private final FileValidator fileDropValidator;
     private final TemporaryFileStorage temporaryFileStorage;
     private final ChecksumService checksumService;
@@ -56,7 +63,7 @@ public class FileDropService {
     public CreateDropResponse create(MultipartFile file, CreateDropRequest request) {
         fileDropValidator.firstFileValidation(file);
 
-        createDropRequestValidator.validate(request);
+        dropRequestValidator.validate(request);
 
         String fileDropPassword = null;
         // hash password if it is present
@@ -168,6 +175,95 @@ public class FileDropService {
         }
     }
 
+    public FileDropDetailsResponse getDetails(UUID id, String managementToken) {
+        validateToken(managementToken);
+        String managementTokenHash = tokenService.hashToken(managementToken);
+
+        FileDrop drop = fileDropRepository
+                .findByIdAndManagementTokenHash(id, managementTokenHash)
+                .orElseThrow(FileDropNotFoundException::new);
+
+        return toDetailsResponse(drop);
+    }
+
+    @Transactional
+    public FileDropDetailsResponse updateExpiration(
+            UUID id,
+            String managementToken,
+            UpdateExpirationRequest request
+    ) {
+        FileDrop drop = findByIdAndManagementTokenHashForUpdate(id, managementToken);
+        ensureEditable(drop);
+        dropRequestValidator.validateExpiration(request.expiresAt());
+        drop.changeExpiration(request.expiresAt());
+        return toDetailsResponse(drop);
+    }
+
+    @Transactional
+    public FileDropDetailsResponse updateMaxDownloads(
+            UUID id,
+            String managementToken,
+            UpdateMaxDownloadsRequest request
+    ) {
+        FileDrop drop = findByIdAndManagementTokenHashForUpdate(id, managementToken);
+        ensureEditable(drop);
+        dropRequestValidator.validateMaxDownloads(request.maxDownloads());
+
+        if (request.maxDownloads() <= drop.getDownloadCount()) {
+            throw new InvalidMaxDownloadsException(
+                    "Maximum downloads must exceed the current download count of %d."
+                            .formatted(drop.getDownloadCount())
+            );
+        }
+
+        drop.changeMaxDownloads(request.maxDownloads());
+        return toDetailsResponse(drop);
+    }
+
+    @Transactional
+    public void requestDeletion(UUID id, String managementToken) {
+        FileDrop drop = findByIdAndManagementTokenHashForUpdate(id, managementToken);
+
+        if(drop.getStatus() == FileDropStatus.DELETED || drop.getStatus() == FileDropStatus.DELETION_PENDING){
+            return;
+        }
+        drop.markDeletionPending();
+        fileDropRepository.save(drop);
+
+
+    }
+
+    private FileDrop findByIdAndManagementTokenHashForUpdate(UUID id, String managementToken) {
+        validateToken(managementToken);
+        String managementTokenHash = tokenService.hashToken(managementToken);
+        return fileDropRepository
+                .findByIdAndManagementTokenHashForUpdate(id, managementTokenHash)
+                .orElseThrow(FileDropNotFoundException::new);
+    }
+
+    private void ensureEditable(FileDrop drop) {
+        if (drop.getStatus() != FileDropStatus.AVAILABLE) {
+            throw new FileDropNotEditableException();
+        }
+    }
+
+    private FileDropDetailsResponse toDetailsResponse(FileDrop drop) {
+        return new FileDropDetailsResponse(
+                drop.getId(),
+                drop.getOriginalFileName(),
+                drop.getDetectedContentType(),
+                drop.getSize(),
+                drop.getCreatedAt(),
+                drop.getExpiresAt(),
+                drop.getDeletedAt(),
+                drop.getMaxDownloads(),
+                drop.getDownloadCount(),
+                drop.getDownloadsRemaining(),
+                drop.getStatus(),
+                drop.getPasswordHash() != null
+        );
+    }
+
     private FileDrop reserveDownload(String tokenHash) {
         return transactionTemplate.execute(status -> {
             FileDrop drop = findByTokenHashAndLock(tokenHash);
@@ -194,10 +290,7 @@ public class FileDropService {
     }
 
     private void validateDownload(FileDrop drop) {
-        if (drop.getStatus() == FileDropStatus.USED) {
-            throw new DownloadLimitExceededException();
-        }
-        if (drop.getStatus() != FileDropStatus.AVAILABLE || drop.getDeletedAt() != null) {
+        if (drop.getStatus() != FileDropStatus.AVAILABLE) {
             throw new FileDropNotFoundException();
         }
         if (drop.isExpired(clock.instant())) {
@@ -210,9 +303,8 @@ public class FileDropService {
 
     private void registerDownload(FileDrop drop) {
         drop.increaseDownloadCount();
-
-        if (drop.getDownloadCount().equals(drop.getMaxDownloads())) {
-            drop.markUsed();
+        if(drop.getDownloadsRemaining() == 0){
+            drop.markDeletionPending();
         }
     }
 
@@ -366,4 +458,6 @@ public class FileDropService {
 
         return previousFailure;
     }
+
+
 }

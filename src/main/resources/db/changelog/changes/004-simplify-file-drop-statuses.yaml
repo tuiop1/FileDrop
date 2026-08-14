@@ -1,0 +1,32 @@
+databaseChangeLog:
+  - changeSet:
+      id: 004-simplify-file-drop-statuses
+      author: tuiop
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE file_drops
+              DROP CONSTRAINT ck_file_drops_status;
+
+              UPDATE file_drops
+              SET status = 'AVAILABLE'
+              WHERE status IN ('USED', 'EXPIRED');
+
+              ALTER TABLE file_drops
+              ADD CONSTRAINT ck_file_drops_status
+              CHECK (status IN ('PENDING', 'AVAILABLE', 'DELETION_PENDING', 'DELETED', 'FAILED'));
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE file_drops
+              DROP CONSTRAINT ck_file_drops_status;
+
+              UPDATE file_drops
+              SET status = 'DELETED'
+              WHERE status = 'DELETION_PENDING';
+
+              ALTER TABLE file_drops
+              ADD CONSTRAINT ck_file_drops_status
+              CHECK (status IN ('PENDING', 'AVAILABLE', 'USED', 'EXPIRED', 'DELETED', 'FAILED'));

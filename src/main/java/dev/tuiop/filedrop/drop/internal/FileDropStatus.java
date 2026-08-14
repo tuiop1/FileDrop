@@ -4,8 +4,7 @@ public enum FileDropStatus {
 
     PENDING,
     AVAILABLE,
-    USED,
-    EXPIRED,
+    DELETION_PENDING,
     DELETED,
     FAILED
 }

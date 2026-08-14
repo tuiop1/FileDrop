@@ -18,8 +18,8 @@ public final class MasterKeyProviderImpl implements MasterKeyProvider {
     private final int version;
 
     public MasterKeyProviderImpl(
-            @Value("${application.filedrop.encryption.master-key}") String encodedMasterKey,
-            @Value("${application.filedrop.encryption.key-version}") int version
+            @Value("${application.encryption.master-key}") String encodedMasterKey,
+            @Value("${application.encryption.key-version}") int version
     ) {
         if (version < 1) {
             throw new IllegalStateException("Encryption master-key version must be at least 1.");

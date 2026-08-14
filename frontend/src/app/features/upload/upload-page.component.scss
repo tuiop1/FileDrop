@@ -1,3 +1,47 @@
 :host {
   display: block;
 }
+
+.upload-panel {
+  position: relative;
+}
+
+.upload-panel--busy > :not(.upload-loading) {
+  opacity: 0.32;
+  pointer-events: none;
+  transition: opacity 160ms ease;
+}
+
+.upload-loading {
+  position: absolute;
+  z-index: 5;
+  inset: 0;
+  display: flex;
+  padding: 28px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  border-radius: inherit;
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(3px);
+  text-align: center;
+}
+
+.upload-loading__spinner {
+  width: 42px;
+  height: 42px;
+  border-width: 4px;
+}
+
+.upload-loading strong {
+  margin-top: 18px;
+  font-size: 1.05rem;
+}
+
+.upload-loading > span:last-child {
+  max-width: 390px;
+  margin-top: 7px;
+  color: var(--text-soft);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}

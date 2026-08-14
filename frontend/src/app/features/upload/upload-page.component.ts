@@ -163,6 +163,10 @@ export class UploadPageComponent {
   }
 
   onFileInput(event: Event): void {
+    if (this.isUploading()) {
+      return;
+    }
+
     const input = event.target;
 
     if (!(input instanceof HTMLInputElement)) {

@@ -9,29 +9,96 @@
 
     <p class="eyebrow">Secure file transfer</p>
     <h1 id="download-title">A file is ready to download</h1>
-    <p id="download-help" class="download-panel__intro">
-      File details are kept private until you request the download. Your browser will save the file
-      using the name supplied by the server.
-    </p>
+    @if (passwordRequired()) {
+      <p id="download-help" class="download-panel__intro">
+        This file is password protected. Enter the password shared by the sender to continue.
+      </p>
 
-    <button
-      class="download-button"
-      type="button"
-      (click)="download()"
-      [disabled]="loading() || downloadsRemaining() === 0"
-      aria-describedby="download-help"
-    >
-      @if (loading()) {
-        <span class="spinner" aria-hidden="true"></span>
-        <span>Preparing download…</span>
-      } @else {
-        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-          <path d="M12 3v11m0 0 4-4m-4 4-4-4" />
-          <path d="M5 19h14" />
-        </svg>
-        <span>{{ downloadedFilename() ? 'Download again' : 'Download file' }}</span>
-      }
-    </button>
+      <form class="password-form" (submit)="submitPassword($event)">
+        <label for="download-password">Download password</label>
+        <div class="password-field">
+          <input
+            #passwordInput
+            id="download-password"
+            [type]="showPassword() ? 'text' : 'password'"
+            [formControl]="passwordControl"
+            autocomplete="current-password"
+            placeholder="Enter password"
+            [readOnly]="loading() || downloadsRemaining() === 0"
+            [attr.aria-invalid]="
+              (passwordControl.invalid && passwordControl.touched) || passwordError() !== null
+            "
+            [attr.aria-describedby]="
+              passwordError() || (passwordControl.invalid && passwordControl.touched)
+                ? 'download-password-help download-password-error'
+                : 'download-password-help'
+            "
+            (input)="clearPasswordError()"
+          />
+          <button
+            class="password-toggle"
+            type="button"
+            [disabled]="loading() || downloadsRemaining() === 0"
+            [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
+            (click)="showPassword.set(!showPassword())"
+          >
+            {{ showPassword() ? 'Hide' : 'Show' }}
+          </button>
+        </div>
+        <p id="download-password-help" class="password-help">
+          Passwords are sent only to the download endpoint and never placed in the URL.
+        </p>
+        @if (passwordError(); as message) {
+          <p id="download-password-error" class="password-error" role="alert">{{ message }}</p>
+        } @else if (passwordControl.invalid && passwordControl.touched) {
+          <p id="download-password-error" class="password-error" role="alert">
+            Enter the 8–128 character password supplied by the sender.
+          </p>
+        }
+
+        <button
+          class="download-button"
+          type="submit"
+          [disabled]="loading() || downloadsRemaining() === 0"
+          aria-describedby="download-help"
+        >
+          @if (loading()) {
+            <span class="spinner" aria-hidden="true"></span>
+            <span>Checking password…</span>
+          } @else {
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M12 3v11m0 0 4-4m-4 4-4-4" />
+              <path d="M5 19h14" />
+            </svg>
+            <span>{{ downloadedFilename() ? 'Download again' : 'Unlock and download' }}</span>
+          }
+        </button>
+      </form>
+    } @else {
+      <p id="download-help" class="download-panel__intro">
+        File details are kept private until you request the download. Your browser will save the
+        file using the name supplied by the server.
+      </p>
+
+      <button
+        class="download-button"
+        type="button"
+        (click)="download()"
+        [disabled]="loading() || downloadsRemaining() === 0"
+        aria-describedby="download-help"
+      >
+        @if (loading()) {
+          <span class="spinner" aria-hidden="true"></span>
+          <span>Preparing download…</span>
+        } @else {
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M12 3v11m0 0 4-4m-4 4-4-4" />
+            <path d="M5 19h14" />
+          </svg>
+          <span>{{ downloadedFilename() ? 'Download again' : 'Download file' }}</span>
+        }
+      </button>
+    }
 
     @if (downloadedFilename(); as filename) {
       <div class="result result--success" role="status" aria-live="polite">

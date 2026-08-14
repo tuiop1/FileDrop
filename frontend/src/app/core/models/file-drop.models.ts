@@ -11,6 +11,10 @@ export interface CreateDropResponse {
   readonly expiresAt: string;
 }
 
+export interface DownloadDropRequest {
+  readonly password: string;
+}
+
 export type FileDropStatus = 'PENDING' | 'AVAILABLE' | 'DELETION_PENDING' | 'DELETED' | 'FAILED';
 
 export interface FileDropDetails {

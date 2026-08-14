@@ -8,7 +8,7 @@ public final class FileDropNotEditableException extends BusinessException {
     public FileDropNotEditableException() {
         super(
                 "FILE_DROP_NOT_EDITABLE",
-                "Only an available file drop can be modified.",
+                "Only an available, unexpired file drop can be modified.",
                 HttpStatus.CONFLICT.value()
         );
     }

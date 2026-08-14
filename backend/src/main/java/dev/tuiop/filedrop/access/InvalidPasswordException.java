@@ -1,4 +1,4 @@
-package dev.tuiop.filedrop.drop.internal.exception;
+package dev.tuiop.filedrop.access;
 
 import dev.tuiop.filedrop.common.exception.RequestValidationException;
 

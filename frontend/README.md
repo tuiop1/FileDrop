@@ -90,14 +90,18 @@ The frontend uses a separate Compose profile so infrastructure-only commands do 
 
 The management URL contains a secret token. Treat the full URL like a password and do not share it with download recipients.
 
-## Password limitation
+## Password-protected downloads
 
-The current backend validates and hashes an optional password during upload, and management details report whether one was configured. However, the download controller does **not** accept or verify a password. The frontend keeps the upload password field so backend password validation can be exercised, but deliberately does not display a password prompt on the download page. No password-verification endpoint is assumed or mocked.
+The backend validates and hashes an optional password during upload. A protected download first returns `DOWNLOAD_PASSWORD_REQUIRED`; the frontend then asks the recipient for the password and submits it as JSON to the same download path. Passwords are never placed in the URL, and an incorrect password does not consume a download slot.
+
+After the token, drop state, and optional password are accepted, the backend reserves a download slot before retrieving and decrypting the object. This prevents concurrent requests from performing expensive storage work after the limit is reached. A storage, integrity, streaming, or client/network failure after reservation can therefore still consume that download attempt.
+
+Use HTTPS outside local development so passwords and file contents are encrypted in transit.
 
 ## API integration notes
 
 - Uploads send `file` and a JSON Blob named `metadata` in `multipart/form-data`; the browser supplies the multipart boundary.
-- Downloads use a Blob response and observe the full HTTP response so `Content-Disposition` and `X-Downloads-Remaining` are available.
+- Downloads use GET when no password has been requested and POST a JSON password challenge for protected drops. Both paths use a Blob response and observe the full HTTP response so `Content-Disposition` and `X-Downloads-Remaining` are available.
 - Every details, expiration, max-downloads, and delete request sends `X-Management-Token`.
 - Local date/time inputs are converted to ISO-8601 instants before they are sent.
 - Backend JSON errors, Spring validation fallbacks, text errors, and Blob-wrapped download errors share one presentation format.

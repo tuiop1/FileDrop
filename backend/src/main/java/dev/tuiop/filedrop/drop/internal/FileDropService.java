@@ -11,12 +11,14 @@ import dev.tuiop.filedrop.drop.internal.dto.FileDropDetailsResponse;
 import dev.tuiop.filedrop.drop.internal.dto.UpdateExpirationRequest;
 import dev.tuiop.filedrop.drop.internal.dto.UpdateMaxDownloadsRequest;
 import dev.tuiop.filedrop.drop.internal.exception.DownloadLimitExceededException;
+import dev.tuiop.filedrop.drop.internal.exception.DownloadPasswordRequiredException;
 import dev.tuiop.filedrop.drop.internal.exception.DropCreationException;
 import dev.tuiop.filedrop.drop.internal.exception.DropDownloadPreparationException;
 import dev.tuiop.filedrop.drop.internal.exception.DropIntegrityException;
 import dev.tuiop.filedrop.drop.internal.exception.FileDropExpiredException;
 import dev.tuiop.filedrop.drop.internal.exception.FileDropNotFoundException;
 import dev.tuiop.filedrop.drop.internal.exception.FileDropNotEditableException;
+import dev.tuiop.filedrop.drop.internal.exception.InvalidDownloadPasswordException;
 import dev.tuiop.filedrop.drop.internal.exception.InvalidMaxDownloadsException;
 import dev.tuiop.filedrop.drop.internal.metadata.EncryptionMetadataMapper;
 import dev.tuiop.filedrop.drop.internal.validation.DropRequestValidator;
@@ -151,11 +153,16 @@ public class FileDropService {
     }
 
     public DropDownloadResult getFileDropAndMetadata(String token) {
+        return getFileDropAndMetadata(token, null);
+    }
+
+    public DropDownloadResult getFileDropAndMetadata(String token, String password) {
         validateToken(token);
         String tokenHash = tokenService.hashToken(token);
 
         FileDrop candidate = findByTokenHash(tokenHash);
         validateDownload(candidate);
+        validateDownloadPassword(candidate, password);
 
         Path stagedFile = stageAndVerify(candidate);
 
@@ -172,6 +179,22 @@ public class FileDropService {
         } catch (RuntimeException | Error exception) {
             deleteStagedFile(stagedFile, exception);
             throw exception;
+        }
+    }
+
+    private void validateDownloadPassword(FileDrop drop, String password) {
+        String passwordHash = drop.getPasswordHash();
+
+        if (passwordHash == null) {
+            return;
+        }
+
+        if (password == null) {
+            throw new DownloadPasswordRequiredException();
+        }
+
+        if (!passwordService.matches(password, passwordHash)) {
+            throw new InvalidDownloadPasswordException();
         }
     }
 
@@ -242,7 +265,8 @@ public class FileDropService {
     }
 
     private void ensureEditable(FileDrop drop) {
-        if (drop.getStatus() != FileDropStatus.AVAILABLE) {
+        if (drop.getStatus() != FileDropStatus.AVAILABLE
+                || drop.isExpired(clock.instant())) {
             throw new FileDropNotEditableException();
         }
     }

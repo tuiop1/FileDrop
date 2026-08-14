@@ -6,6 +6,8 @@ const CODE_MESSAGES: Readonly<Record<string, string>> = {
   FILE_DROP_NOT_FOUND: 'This file drop could not be found, or the link is invalid.',
   FILE_DROP_EXPIRED: 'This file drop has expired.',
   DOWNLOAD_LIMIT_EXCEEDED: 'This file drop has reached its download limit.',
+  DOWNLOAD_PASSWORD_REQUIRED: 'Enter the password to download this file.',
+  INVALID_DOWNLOAD_PASSWORD: 'The supplied download password is incorrect.',
   FILE_DROP_NOT_EDITABLE: 'This file drop can no longer be edited.',
   INVALID_EXPIRATION: 'Choose an expiration between 1 minute and 7 days from now.',
   INVALID_MAX_DOWNLOADS: 'Choose a maximum download count from 1 to 100.',
@@ -21,6 +23,7 @@ const CODE_MESSAGES: Readonly<Record<string, string>> = {
 
 const STATUS_MESSAGES: Readonly<Record<number, string>> = {
   400: 'The request was not valid.',
+  401: 'A valid password is required for this request.',
   404: 'The requested file drop was not found.',
   409: 'The file drop is not in a state that allows this operation.',
   410: 'This file drop is no longer available.',

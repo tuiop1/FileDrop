@@ -1,5 +1,20 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  ElementRef,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import {
+  AbstractControl,
+  FormControl,
+  ReactiveFormsModule,
+  ValidationErrors,
+  ValidatorFn,
+} from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { distinctUntilChanged, firstValueFrom, map } from 'rxjs';
 
@@ -13,9 +28,30 @@ interface FieldErrorView {
   readonly message: string;
 }
 
+const CONTROL_CHARACTER_PATTERN = /[\u0000-\u001f\u007f-\u009f]/u;
+
+const downloadPasswordValidator: ValidatorFn = (
+  control: AbstractControl<unknown>,
+): ValidationErrors | null => {
+  const value = control.value;
+
+  if (typeof value !== 'string') {
+    return { password: true };
+  }
+
+  const codePointLength = Array.from(value).length;
+  const isBlank = value.trim().length === 0;
+  const hasControlCharacter = CONTROL_CHARACTER_PATTERN.test(value);
+
+  return codePointLength >= 8 && codePointLength <= 128 && !isBlank && !hasControlCharacter
+    ? null
+    : { password: true };
+};
+
 @Component({
   selector: 'app-download',
   standalone: true,
+  imports: [ReactiveFormsModule],
   templateUrl: './download.component.html',
   styleUrl: './download.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -23,11 +59,19 @@ interface FieldErrorView {
 export class DownloadComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly fileDropApi = inject(FileDropApiService);
+  private readonly passwordInput = viewChild<ElementRef<HTMLInputElement>>('passwordInput');
 
   private token = '';
   private requestId = 0;
 
   readonly loading = signal(false);
+  readonly passwordRequired = signal(false);
+  readonly showPassword = signal(false);
+  readonly passwordError = signal<string | null>(null);
+  readonly passwordControl = new FormControl('', {
+    nonNullable: true,
+    validators: [downloadPasswordValidator],
+  });
   readonly downloadedFilename = signal<string | null>(null);
   readonly downloadsRemaining = signal<number | null>(null);
   readonly error = signal<UiApiError | null>(null);
@@ -54,6 +98,10 @@ export class DownloadComponent {
         this.token = token;
         this.requestId += 1;
         this.loading.set(false);
+        this.passwordRequired.set(false);
+        this.showPassword.set(false);
+        this.passwordError.set(null);
+        this.passwordControl.reset('');
         this.error.set(null);
         this.downloadedFilename.set(null);
         this.downloadsRemaining.set(null);
@@ -65,7 +113,19 @@ export class DownloadComponent {
       return;
     }
 
+    const password = this.passwordRequired() ? this.passwordControl.value : undefined;
+
+    if (this.passwordRequired()) {
+      this.passwordControl.markAsTouched();
+
+      if (this.passwordControl.invalid) {
+        this.focusPasswordInput();
+        return;
+      }
+    }
+
     this.loading.set(true);
+    this.passwordError.set(null);
     this.error.set(null);
     this.downloadedFilename.set(null);
     this.downloadsRemaining.set(null);
@@ -78,7 +138,7 @@ export class DownloadComponent {
         throw new Error('This download link is incomplete.');
       }
 
-      const response = await firstValueFrom(this.fileDropApi.download(token));
+      const response = await firstValueFrom(this.fileDropApi.download(token, password));
 
       if (requestId !== this.requestId) {
         return;
@@ -93,6 +153,11 @@ export class DownloadComponent {
 
       triggerBrowserDownload(response.body, filename);
 
+      if (password !== undefined) {
+        this.passwordControl.reset('');
+        this.showPassword.set(false);
+      }
+
       this.downloadedFilename.set(filename);
       this.downloadsRemaining.set(
         this.parseDownloadsRemaining(response.headers.get('X-Downloads-Remaining')),
@@ -101,13 +166,38 @@ export class DownloadComponent {
       const normalizedError = await normalizeApiError(error);
 
       if (requestId === this.requestId) {
-        this.error.set(normalizedError);
+        if (normalizedError.code === 'DOWNLOAD_PASSWORD_REQUIRED') {
+          this.passwordRequired.set(true);
+          this.error.set(null);
+          this.focusPasswordInput();
+        } else if (normalizedError.code === 'INVALID_DOWNLOAD_PASSWORD') {
+          this.passwordRequired.set(true);
+          this.passwordControl.reset('');
+          this.passwordError.set('Incorrect password. Try again.');
+          this.error.set(null);
+          this.focusPasswordInput();
+        } else {
+          this.error.set(normalizedError);
+        }
       }
     } finally {
       if (requestId === this.requestId) {
         this.loading.set(false);
       }
     }
+  }
+
+  submitPassword(event: Event): void {
+    event.preventDefault();
+    void this.download();
+  }
+
+  clearPasswordError(): void {
+    this.passwordError.set(null);
+  }
+
+  private focusPasswordInput(): void {
+    window.setTimeout(() => this.passwordInput()?.nativeElement.focus(), 0);
   }
 
   private parseDownloadsRemaining(value: string | null): number | null {

@@ -5,6 +5,7 @@ import { Observable } from 'rxjs';
 import {
   CreateDropRequest,
   CreateDropResponse,
+  DownloadDropRequest,
   FileDropDetails,
   UpdateExpirationRequest,
   UpdateMaxDownloadsRequest,
@@ -29,8 +30,18 @@ export class FileDropApiService {
     return this.http.post<CreateDropResponse>(FileDropApiService.API_URL, formData);
   }
 
-  download(token: string): Observable<HttpResponse<Blob>> {
-    return this.http.get(`${FileDropApiService.API_URL}/d/${encodeURIComponent(token)}`, {
+  download(token: string, password?: string): Observable<HttpResponse<Blob>> {
+    const url = `${FileDropApiService.API_URL}/d/${encodeURIComponent(token)}`;
+
+    if (password === undefined) {
+      return this.http.get(url, {
+        observe: 'response',
+        responseType: 'blob',
+      });
+    }
+
+    const request: DownloadDropRequest = { password };
+    return this.http.post(url, request, {
       observe: 'response',
       responseType: 'blob',
     });

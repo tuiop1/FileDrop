@@ -1,32 +1,26 @@
 package dev.tuiop.filedrop.drop.internal.validation;
 
+import dev.tuiop.filedrop.access.PasswordService;
 import dev.tuiop.filedrop.drop.internal.dto.CreateDropRequest;
 import dev.tuiop.filedrop.drop.internal.exception.InvalidExpirationException;
 import dev.tuiop.filedrop.drop.internal.exception.InvalidMaxDownloadsException;
-import dev.tuiop.filedrop.drop.internal.exception.InvalidPasswordException;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.authentication.password.CompromisedPasswordChecker;
 import org.springframework.stereotype.Component;
 
-import java.time.Duration;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
 
 @Component
 public class DropRequestValidator {
 
-    private static final int MIN_PASSWORD_LENGTH = 8;
-    private static final int MAX_PASSWORD_LENGTH = 128;
-
-    private final CompromisedPasswordChecker compromisedPasswordChecker;
+    private final PasswordService passwordService;
     private final Duration minExpiration;
     private final Duration maxExpiration;
     private final Clock clock;
 
     public DropRequestValidator(
-            CompromisedPasswordChecker compromisedPasswordChecker,
+            PasswordService passwordService,
             @Value("${application.file.expiration.min}") Duration minExpiration,
             @Value("${application.file.expiration.max}") Duration maxExpiration,
             Clock clock
@@ -41,7 +35,7 @@ public class DropRequestValidator {
             );
         }
 
-        this.compromisedPasswordChecker = compromisedPasswordChecker;
+        this.passwordService = passwordService;
         this.minExpiration = minExpiration;
         this.maxExpiration = maxExpiration;
         this.clock = clock;
@@ -55,7 +49,7 @@ public class DropRequestValidator {
         validateMaxDownloads(request.maxDownloads());
 
         validateExpiration(request.expiresAt());
-        validatePassword(request.password());
+        passwordService.validate(request.password());
     }
 
     public void validateMaxDownloads(Integer maxDownloads) {
@@ -83,38 +77,4 @@ public class DropRequestValidator {
         }
     }
 
-    private void validatePassword(String password) {
-        if (password == null) {
-            return;
-        }
-
-        List<String> errors = new ArrayList<>();
-
-        if (password.isBlank()) {
-            errors.add("Password must not be blank.");
-        }
-
-        int passwordLength = password.codePointCount(0, password.length());
-
-        if (passwordLength < MIN_PASSWORD_LENGTH || passwordLength > MAX_PASSWORD_LENGTH) {
-            errors.add(
-                    "Password must be between %d and %d Unicode characters."
-                            .formatted(MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH)
-            );
-        }
-
-        if (password.codePoints().anyMatch(Character::isISOControl)) {
-            errors.add("Password must not contain control characters.");
-        }
-
-        if (!password.isBlank() && compromisedPasswordChecker.check(password).isCompromised()) {
-            errors.add(
-                    "Password appears in a known data breach and must not be used."
-            );
-        }
-
-        if (!errors.isEmpty()) {
-            throw new InvalidPasswordException(errors);
-        }
-    }
 }

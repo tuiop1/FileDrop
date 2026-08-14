@@ -32,6 +32,12 @@ public interface FileDropRepository extends JpaRepository<FileDrop, UUID> {
     );
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+    select f
+    from FileDrop f
+    where f.id = :id
+      and f.managementTokenHash = :managementTokenHash
+""")
     Optional<FileDrop> findByIdAndManagementTokenHashForUpdate(UUID id, String managementTokenHash);
 
 

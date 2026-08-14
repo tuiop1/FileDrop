@@ -1,0 +1,329 @@
+<main
+  class="page page--management"
+  [attr.inert]="showDeleteConfirmation() ? '' : null"
+  [attr.aria-hidden]="showDeleteConfirmation() ? 'true' : null"
+>
+  <section class="management-shell" aria-labelledby="management-title">
+    <div class="page-heading page-heading--split">
+      <div>
+        <a class="back-link" routerLink="/">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
+          Back to upload
+        </a>
+        <p class="eyebrow">Manage file drop</p>
+        <h1 #managementHeading id="management-title" tabindex="-1">Drop details</h1>
+        <p>Review activity, update limits, or remove this file.</p>
+      </div>
+      @if (details()) {
+        <button
+          class="button button--quiet button--small"
+          type="button"
+          (click)="loadDetails()"
+          [disabled]="isLoading() || isBusy()"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M19 7v5h-5" />
+            <path d="M18 12a6 6 0 1 0-1.3 3.7" />
+          </svg>
+          Refresh
+        </button>
+      }
+    </div>
+
+    @if (isLoading() && !details()) {
+      <div class="loading-state" aria-live="polite">
+        <span class="spinner spinner--accent" aria-hidden="true"></span>
+        <strong>Loading drop details…</strong>
+        <span>Checking the management token with FileDrop.</span>
+      </div>
+    } @else if (!details() && apiError(); as error) {
+      <div class="standalone-error">
+        <span class="state-icon state-icon--error" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 7v6m0 4h.01" />
+          </svg>
+        </span>
+        <h2>We couldn’t open this management link</h2>
+        <app-api-error [error]="error" />
+        <a class="button button--primary" routerLink="/">Create a new drop</a>
+      </div>
+    } @else if (details(); as drop) {
+      <article class="management-content">
+        <header class="file-heading">
+          <span class="file-heading__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M7 3.5h6.5L18 8v12.5H7z" />
+              <path d="M13.5 3.5V8H18" />
+            </svg>
+          </span>
+          <div>
+            <h2>{{ drop.originalFileName }}</h2>
+            <p>{{ drop.contentType }} · {{ drop.size | fileSize }}</p>
+          </div>
+          <span class="status-badge" [attr.data-status]="drop.status">{{
+            statusLabel(drop.status)
+          }}</span>
+        </header>
+
+        @if (drop.status !== 'AVAILABLE') {
+          <div class="status-banner" [attr.data-status]="drop.status" role="status">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              @if (drop.status === 'DELETION_PENDING' || drop.status === 'DELETED') {
+                <path d="M4 7.5h16M7 4.5h10M8 7.5l.6 12h6.8l.6-12" />
+              } @else {
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 7v6m0 4h.01" />
+              }
+            </svg>
+            <span>
+              <strong>{{ statusHeading(drop.status) }}</strong>
+              <small>{{ statusDescription(drop.status) }}</small>
+            </span>
+          </div>
+        }
+
+        @if (operationMessage()) {
+          <p class="inline-notice inline-notice--success" role="status">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.1 4L19 7" /></svg>
+            {{ operationMessage() }}
+          </p>
+        }
+
+        @if (apiError(); as error) {
+          <app-api-error [error]="error" />
+        }
+
+        <section class="detail-section" aria-labelledby="activity-title">
+          <div class="section-title">
+            <div>
+              <p class="eyebrow">Activity</p>
+              <h3 id="activity-title">Download usage</h3>
+            </div>
+            <strong class="usage-number">{{ drop.downloadsRemaining }} remaining</strong>
+          </div>
+          <div
+            class="usage-track"
+            role="progressbar"
+            aria-label="Downloads used"
+            aria-valuemin="0"
+            [attr.aria-valuemax]="drop.maxDownloads"
+            [attr.aria-valuenow]="drop.downloadCount"
+          >
+            <span [style.width.%]="downloadProgress(drop)"></span>
+          </div>
+          <div class="usage-labels">
+            <span
+              ><strong>{{ drop.downloadCount }}</strong> downloaded</span
+            >
+            <span
+              ><strong>{{ drop.maxDownloads }}</strong> maximum</span
+            >
+          </div>
+        </section>
+
+        <section class="detail-section" aria-labelledby="information-title">
+          <div class="section-title">
+            <div>
+              <p class="eyebrow">Information</p>
+              <h3 id="information-title">File and lifecycle</h3>
+            </div>
+          </div>
+          <dl class="detail-list">
+            <div>
+              <dt>Created</dt>
+              <dd>{{ drop.createdAt | date: 'medium' }}</dd>
+            </div>
+            <div>
+              <dt>Expires</dt>
+              <dd>{{ drop.expiresAt | date: 'medium' }}</dd>
+            </div>
+            <div>
+              <dt>Password</dt>
+              <dd>{{ drop.passwordProtected ? 'Configured' : 'Not configured' }}</dd>
+            </div>
+            <div>
+              <dt>Drop ID</dt>
+              <dd class="monospace">{{ drop.id }}</dd>
+            </div>
+            @if (drop.deletedAt) {
+              <div>
+                <dt>Deleted</dt>
+                <dd>{{ drop.deletedAt | date: 'medium' }}</dd>
+              </div>
+            }
+          </dl>
+        </section>
+
+        <section class="detail-section detail-section--settings" aria-labelledby="settings-title">
+          <div class="section-title">
+            <div>
+              <p class="eyebrow">Settings</p>
+              <h3 id="settings-title">Drop limits</h3>
+            </div>
+            @if (!canEdit(drop)) {
+              <span class="read-only-label">Read only</span>
+            }
+          </div>
+
+          <div class="setting-row">
+            <div>
+              <strong>Expiration</strong>
+              <span>Must remain between about 1 minute and 7 days from now.</span>
+            </div>
+            <form class="inline-form" [formGroup]="expirationForm" (ngSubmit)="updateExpiration()">
+              <input
+                aria-label="New expiration"
+                type="datetime-local"
+                formControlName="expiresAt"
+                [min]="minimumExpiration"
+                [max]="maximumExpiration"
+                [attr.aria-invalid]="expirationForm.controls.expiresAt.invalid"
+                [attr.aria-describedby]="
+                  expirationForm.controls.expiresAt.invalid &&
+                  expirationForm.controls.expiresAt.touched
+                    ? 'management-expiration-error'
+                    : null
+                "
+              />
+              <button
+                class="button button--secondary button--small"
+                type="submit"
+                [disabled]="!canEdit(drop) || isBusy()"
+              >
+                @if (activeOperation() === 'expiration') {
+                  <span class="spinner" aria-hidden="true"></span>
+                }
+                Save
+              </button>
+              @if (
+                expirationForm.controls.expiresAt.invalid &&
+                expirationForm.controls.expiresAt.touched
+              ) {
+                <small id="management-expiration-error" class="setting-error" role="alert"
+                  >Choose a valid time between about 1 minute and 7 days from now.</small
+                >
+              }
+            </form>
+          </div>
+
+          <div class="setting-row">
+            <div>
+              <strong>Maximum downloads</strong>
+              <span
+                >Must be 1–100 and greater than the current count of {{ drop.downloadCount }}.</span
+              >
+            </div>
+            <form
+              class="inline-form inline-form--number"
+              [formGroup]="downloadsForm"
+              (ngSubmit)="updateMaxDownloads()"
+            >
+              <input
+                aria-label="New maximum downloads"
+                type="number"
+                formControlName="maxDownloads"
+                min="1"
+                max="100"
+                inputmode="numeric"
+                [attr.aria-invalid]="downloadsForm.controls.maxDownloads.invalid"
+                [attr.aria-describedby]="
+                  downloadsForm.controls.maxDownloads.invalid &&
+                  downloadsForm.controls.maxDownloads.touched
+                    ? 'management-downloads-error'
+                    : null
+                "
+              />
+              <button
+                class="button button--secondary button--small"
+                type="submit"
+                [disabled]="!canEdit(drop) || isBusy()"
+              >
+                @if (activeOperation() === 'downloads') {
+                  <span class="spinner" aria-hidden="true"></span>
+                }
+                Save
+              </button>
+              @if (
+                downloadsForm.controls.maxDownloads.invalid &&
+                downloadsForm.controls.maxDownloads.touched
+              ) {
+                <small id="management-downloads-error" class="setting-error" role="alert"
+                  >Enter 1–100, greater than the current download count.</small
+                >
+              }
+            </form>
+          </div>
+        </section>
+
+        <section class="danger-zone" aria-labelledby="delete-title">
+          <div>
+            <h3 id="delete-title">Delete this drop</h3>
+            <p>
+              Downloads will stop immediately. Stored data is removed asynchronously by scheduled
+              cleanup.
+            </p>
+          </div>
+          <button
+            #deleteTrigger
+            class="button button--danger button--small"
+            type="button"
+            (click)="openDeleteConfirmation()"
+            [disabled]="isBusy() || drop.status === 'DELETION_PENDING' || drop.status === 'DELETED'"
+          >
+            Delete drop
+          </button>
+        </section>
+      </article>
+    }
+  </section>
+</main>
+
+@if (showDeleteConfirmation() && details(); as drop) {
+  <div class="dialog-backdrop" (click)="cancelDelete()">
+    <section
+      #confirmDialog
+      class="confirm-dialog"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="confirm-delete-title"
+      aria-describedby="confirm-delete-description"
+      tabindex="-1"
+      (click)="$event.stopPropagation()"
+      (keydown)="onDialogKeydown($event)"
+    >
+      <span class="state-icon state-icon--danger" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M4 7.5h16M7 4.5h10M8 7.5l.6 12h6.8l.6-12" /></svg>
+      </span>
+      <h2 id="confirm-delete-title">Delete this file drop?</h2>
+      <p id="confirm-delete-description">
+        <strong>{{ drop.originalFileName }}</strong> will become unavailable immediately. This
+        cannot be undone.
+      </p>
+      <div class="dialog-actions">
+        <button
+          #cancelDeleteButton
+          class="button button--quiet"
+          type="button"
+          (click)="cancelDelete()"
+          [disabled]="activeOperation() === 'delete'"
+        >
+          Cancel
+        </button>
+        <button
+          class="button button--danger"
+          type="button"
+          (click)="deleteDrop()"
+          [disabled]="activeOperation() === 'delete'"
+        >
+          @if (activeOperation() === 'delete') {
+            <span class="spinner" aria-hidden="true"></span>
+            Requesting deletion…
+          } @else {
+            Delete drop
+          }
+        </button>
+      </div>
+    </section>
+  </div>
+}

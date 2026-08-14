@@ -406,7 +406,8 @@ export class UploadPageComponent {
 
   private buildManagementUrl(id: string, managementToken: string): string {
     const url = new URL(`/manage/${encodeURIComponent(id)}`, window.location.origin);
-    url.searchParams.set('token', managementToken);
+    const fragmentParams = new URLSearchParams({ token: managementToken });
+    url.hash = fragmentParams.toString();
     return url.toString();
   }
 

@@ -1,4 +1,4 @@
-package dev.tuiop.filedrop.crypto;
+package dev.tuiop.filedrop.crypto.internal;
 
 import javax.crypto.SecretKey;
 

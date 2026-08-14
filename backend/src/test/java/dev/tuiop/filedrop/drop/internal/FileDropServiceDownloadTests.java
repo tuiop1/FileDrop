@@ -29,7 +29,6 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.nio.file.Path;
-import java.time.Clock;
 import java.time.Instant;
 import java.util.Optional;
 
@@ -47,7 +46,8 @@ class FileDropServiceDownloadTests {
 
     private static final String TOKEN = "d".repeat(43);
     private static final String TOKEN_HASH = "download-token-hash";
-    private static final Instant NOW = Instant.parse("2026-08-14T12:00:00Z");
+    private static final Instant PAST = Instant.EPOCH;
+    private static final Instant FUTURE = Instant.parse("2100-01-01T00:00:00Z");
     private static final byte[] FILE_CONTENT = "downloaded content".getBytes();
     private static final String CHECKSUM = "expected-checksum";
 
@@ -78,22 +78,19 @@ class FileDropServiceDownloadTests {
     private FileDropProperties fileDropProperties;
     @Mock
     private TransactionTemplate transactionTemplate;
-    @Mock
-    private Clock clock;
-
     @InjectMocks
     private FileDropService fileDropService;
 
     @BeforeEach
     void setUp() {
+        when(tokenService.isValidFormat(TOKEN)).thenReturn(true);
         when(tokenService.hashToken(TOKEN)).thenReturn(TOKEN_HASH);
-        when(clock.instant()).thenReturn(NOW);
     }
 
     @Test
     void expiredDropIsRejectedBeforeFileStaging() {
         when(fileDropRepository.findByDownloadTokenHash(TOKEN_HASH))
-                .thenReturn(Optional.of(drop(NOW.minusSeconds(1), 0, 2)));
+                .thenReturn(Optional.of(drop(PAST, 0, 2)));
 
         assertThatThrownBy(() -> fileDropService.getFileDropAndMetadata(TOKEN))
                 .isInstanceOf(FileDropExpiredException.class);
@@ -105,7 +102,7 @@ class FileDropServiceDownloadTests {
     @Test
     void exhaustedDropIsRejectedBeforeFileStaging() {
         when(fileDropRepository.findByDownloadTokenHash(TOKEN_HASH))
-                .thenReturn(Optional.of(drop(NOW.plusSeconds(60), 2, 2)));
+                .thenReturn(Optional.of(drop(FUTURE, 2, 2)));
 
         assertThatThrownBy(() -> fileDropService.getFileDropAndMetadata(TOKEN))
                 .isInstanceOf(DownloadLimitExceededException.class);
@@ -116,7 +113,7 @@ class FileDropServiceDownloadTests {
 
     @Test
     void lastDownloadIsReservedAndMarksDropForDeletion() throws Exception {
-        FileDrop drop = drop(NOW.plusSeconds(60), 0, 1);
+        FileDrop drop = drop(FUTURE, 0, 1);
         Path stagedFile = prepareSuccessfulStaging(drop);
         when(fileDropRepository.findByDownloadTokenHash(TOKEN_HASH))
                 .thenReturn(Optional.of(drop));
@@ -141,8 +138,8 @@ class FileDropServiceDownloadTests {
 
     @Test
     void reservationRechecksTheLimitAfterStagingAndCleansStagedFile() {
-        FileDrop candidate = drop(NOW.plusSeconds(60), 0, 1);
-        FileDrop concurrentlyExhausted = drop(NOW.plusSeconds(60), 1, 1);
+        FileDrop candidate = drop(FUTURE, 0, 1);
+        FileDrop concurrentlyExhausted = drop(FUTURE, 1, 1);
         Path stagedFile = prepareSuccessfulStaging(candidate);
         when(fileDropRepository.findByDownloadTokenHash(TOKEN_HASH))
                 .thenReturn(Optional.of(candidate));
@@ -159,7 +156,7 @@ class FileDropServiceDownloadTests {
 
     @Test
     void integrityFailureDoesNotConsumeAReservationAndCleansStagedFile() {
-        FileDrop drop = drop(NOW.plusSeconds(60), 0, 2);
+        FileDrop drop = drop(FUTURE, 0, 2);
         Path stagedFile = prepareSuccessfulStaging(drop);
         when(checksumService.calculateSha256(stagedFile)).thenReturn("wrong-checksum");
         when(fileDropRepository.findByDownloadTokenHash(TOKEN_HASH))

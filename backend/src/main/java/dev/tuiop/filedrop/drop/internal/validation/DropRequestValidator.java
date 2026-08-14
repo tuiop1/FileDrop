@@ -7,7 +7,6 @@ import dev.tuiop.filedrop.drop.internal.exception.InvalidMaxDownloadsException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 
@@ -17,13 +16,11 @@ public class DropRequestValidator {
     private final PasswordService passwordService;
     private final Duration minExpiration;
     private final Duration maxExpiration;
-    private final Clock clock;
 
     public DropRequestValidator(
             PasswordService passwordService,
             @Value("${application.file.expiration.min}") Duration minExpiration,
-            @Value("${application.file.expiration.max}") Duration maxExpiration,
-            Clock clock
+            @Value("${application.file.expiration.max}") Duration maxExpiration
     ) {
         if (minExpiration.isNegative() || minExpiration.isZero()) {
             throw new IllegalArgumentException("Minimum expiration duration must be positive.");
@@ -38,7 +35,6 @@ public class DropRequestValidator {
         this.passwordService = passwordService;
         this.minExpiration = minExpiration;
         this.maxExpiration = maxExpiration;
-        this.clock = clock;
     }
 
     public void validate(CreateDropRequest request) {
@@ -65,7 +61,7 @@ public class DropRequestValidator {
             throw new InvalidExpirationException("Expiration time must not be null.");
         }
 
-        Instant now = clock.instant();
+        Instant now = Instant.now();
         Instant earliestExpiration = now.plus(minExpiration);
         Instant latestExpiration = now.plus(maxExpiration);
 

@@ -3,7 +3,6 @@ package dev.tuiop.filedrop.crypto.internal;
 import dev.tuiop.filedrop.crypto.EncryptedFile;
 import dev.tuiop.filedrop.crypto.EncryptionMetadata;
 import dev.tuiop.filedrop.crypto.FileEncryptionService;
-import dev.tuiop.filedrop.crypto.MasterKeyProvider;
 import dev.tuiop.filedrop.crypto.internal.exception.FileEncryptionException;
 import org.springframework.stereotype.Component;
 

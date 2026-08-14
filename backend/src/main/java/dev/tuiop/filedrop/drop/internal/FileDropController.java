@@ -36,6 +36,7 @@ import java.util.UUID;
 public class FileDropController {
 
     private final FileDropService fileDropService;
+    private final FileDropManagementService fileDropManagementService;
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<CreateDropResponse> createDrop(
@@ -86,7 +87,7 @@ public class FileDropController {
             @PathVariable UUID id,
             @RequestHeader("X-Management-Token") String managementToken
     ) {
-        return ResponseEntity.ok(fileDropService.getDetails(id, managementToken));
+        return ResponseEntity.ok(fileDropManagementService.getDetails(id, managementToken));
     }
 
     @PatchMapping("/{id}/expiration")
@@ -95,7 +96,9 @@ public class FileDropController {
             @RequestHeader("X-Management-Token") String managementToken,
             @Valid @RequestBody UpdateExpirationRequest request
     ) {
-        return ResponseEntity.ok(fileDropService.updateExpiration(id, managementToken, request));
+        return ResponseEntity.ok(
+                fileDropManagementService.updateExpiration(id, managementToken, request)
+        );
     }
 
     @PatchMapping("/{id}/max-downloads")
@@ -104,7 +107,9 @@ public class FileDropController {
             @RequestHeader("X-Management-Token") String managementToken,
             @Valid @RequestBody UpdateMaxDownloadsRequest request
     ) {
-        return ResponseEntity.ok(fileDropService.updateMaxDownloads(id, managementToken, request));
+        return ResponseEntity.ok(
+                fileDropManagementService.updateMaxDownloads(id, managementToken, request)
+        );
     }
 
     @DeleteMapping("/{id}")
@@ -112,7 +117,7 @@ public class FileDropController {
             @PathVariable UUID id,
             @RequestHeader("X-Management-Token") String managementToken
     ) {
-        fileDropService.requestDeletion(id, managementToken);
+        fileDropManagementService.requestDeletion(id, managementToken);
         return ResponseEntity.noContent().build();
     }
 }

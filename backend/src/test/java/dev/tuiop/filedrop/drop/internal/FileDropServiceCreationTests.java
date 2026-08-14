@@ -29,7 +29,6 @@ import java.io.InputStream;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Clock;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -83,9 +82,6 @@ class FileDropServiceCreationTests {
     private FileDropProperties fileDropProperties;
     @Mock
     private TransactionTemplate transactionTemplate;
-    @Mock
-    private Clock clock;
-
     @InjectMocks
     private FileDropService fileDropService;
 
@@ -125,7 +121,7 @@ class FileDropServiceCreationTests {
                 .build();
 
         when(temporaryFileStorage.store(upload)).thenReturn(plaintextFile);
-        when(fileDropValidator.preStoreFileValidation(plaintextFile)).thenReturn("text/plain");
+        when(fileDropValidator.validateStagedFile(plaintextFile)).thenReturn("text/plain");
         when(checksumService.calculateSha256(plaintextFile)).thenReturn(CHECKSUM);
         when(fileEncryptionService.encrypt(plaintextFile)).thenReturn(encryptedFile);
         when(encryptionMetadataMapper.toEntity(metadata)).thenReturn(metadataEntity);
@@ -160,9 +156,23 @@ class FileDropServiceCreationTests {
         assertThat(newDrop.getPasswordHash()).isEqualTo(PASSWORD_HASH);
         assertThat(newDrop.getStatus()).isEqualTo(FileDropStatus.PENDING);
 
-        verify(fileDropValidator).firstFileValidation(upload);
+        verify(fileDropValidator).validateUpload(upload);
         verify(dropRequestValidator).validate(request);
         verify(objectStorage).store(anyString(), any(InputStream.class), eq(encryptedFile.size()));
+        verify(temporaryFileStorage).delete(plaintextFile);
+        verify(temporaryFileStorage).delete(encryptedPath);
+        verify(objectStorage, never()).delete(anyString());
+    }
+
+    @Test
+    void temporaryFileCleanupFailureDoesNotFailSuccessfulCreation() {
+        RuntimeException cleanupFailure = new RuntimeException("temporary storage unavailable");
+        doThrow(cleanupFailure).when(temporaryFileStorage).delete(plaintextFile);
+
+        CreateDropResponse response = fileDropService.create(upload, request);
+
+        assertThat(response.id()).isEqualTo(persistedDrop.getId());
+        assertThat(persistedDrop.getStatus()).isEqualTo(FileDropStatus.AVAILABLE);
         verify(temporaryFileStorage).delete(plaintextFile);
         verify(temporaryFileStorage).delete(encryptedPath);
         verify(objectStorage, never()).delete(anyString());

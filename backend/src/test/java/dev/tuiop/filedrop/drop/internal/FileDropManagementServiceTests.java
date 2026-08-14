@@ -1,27 +1,18 @@
 package dev.tuiop.filedrop.drop.internal;
 
-import dev.tuiop.filedrop.access.PasswordService;
 import dev.tuiop.filedrop.access.TokenService;
-import dev.tuiop.filedrop.crypto.FileEncryptionService;
 import dev.tuiop.filedrop.drop.internal.dto.UpdateExpirationRequest;
 import dev.tuiop.filedrop.drop.internal.dto.UpdateMaxDownloadsRequest;
 import dev.tuiop.filedrop.drop.internal.exception.FileDropNotEditableException;
 import dev.tuiop.filedrop.drop.internal.exception.InvalidMaxDownloadsException;
-import dev.tuiop.filedrop.drop.internal.metadata.EncryptionMetadataMapper;
 import dev.tuiop.filedrop.drop.internal.validation.DropRequestValidator;
-import dev.tuiop.filedrop.integrity.ChecksumService;
-import dev.tuiop.filedrop.scanning.FileValidator;
-import dev.tuiop.filedrop.storage.ObjectStorage;
-import dev.tuiop.filedrop.storage.TemporaryFileStorage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.transaction.support.TransactionTemplate;
 
-import java.time.Clock;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
@@ -34,42 +25,21 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class FileDropServiceManagementTests {
+class FileDropManagementServiceTests {
 
     private static final UUID DROP_ID = UUID.fromString("d4a3708b-34e2-42df-97b2-6288e253bb4c");
     private static final String MANAGEMENT_TOKEN = "m".repeat(43);
     private static final String MANAGEMENT_TOKEN_HASH = "management-token-hash";
-    private static final Instant NOW = Instant.parse("2026-08-14T12:00:00Z");
+    private static final Instant NOW = Instant.now();
 
     @Mock
     private FileDropRepository fileDropRepository;
     @Mock
     private DropRequestValidator dropRequestValidator;
     @Mock
-    private FileValidator fileDropValidator;
-    @Mock
-    private TemporaryFileStorage temporaryFileStorage;
-    @Mock
-    private ChecksumService checksumService;
-    @Mock
-    private FileEncryptionService fileEncryptionService;
-    @Mock
-    private ObjectStorage objectStorage;
-    @Mock
-    private EncryptionMetadataMapper encryptionMetadataMapper;
-    @Mock
-    private PasswordService passwordService;
-    @Mock
     private TokenService tokenService;
-    @Mock
-    private FileDropProperties fileDropProperties;
-    @Mock
-    private TransactionTemplate transactionTemplate;
-    @Mock
-    private Clock clock;
-
     @InjectMocks
-    private FileDropService fileDropService;
+    private FileDropManagementService managementService;
 
     private FileDrop expiredDrop;
 
@@ -82,6 +52,7 @@ class FileDropServiceManagementTests {
                 .downloadCount(0)
                 .build();
 
+        when(tokenService.isValidFormat(MANAGEMENT_TOKEN)).thenReturn(true);
         when(tokenService.hashToken(MANAGEMENT_TOKEN)).thenReturn(MANAGEMENT_TOKEN_HASH);
     }
 
@@ -89,9 +60,8 @@ class FileDropServiceManagementTests {
     void expiredAvailableDropCannotBeRevivedByChangingExpiration() {
         Instant originalExpiration = expiredDrop.getExpiresAt();
         useManagedDrop(expiredDrop);
-        when(clock.instant()).thenReturn(NOW);
 
-        assertThatThrownBy(() -> fileDropService.updateExpiration(
+        assertThatThrownBy(() -> managementService.updateExpiration(
                 DROP_ID,
                 MANAGEMENT_TOKEN,
                 new UpdateExpirationRequest(NOW.plusSeconds(3_600))
@@ -111,9 +81,8 @@ class FileDropServiceManagementTests {
     @Test
     void expiredAvailableDropCannotChangeMaximumDownloads() {
         useManagedDrop(expiredDrop);
-        when(clock.instant()).thenReturn(NOW);
 
-        assertThatThrownBy(() -> fileDropService.updateMaxDownloads(
+        assertThatThrownBy(() -> managementService.updateMaxDownloads(
                 DROP_ID,
                 MANAGEMENT_TOKEN,
                 new UpdateMaxDownloadsRequest(20)
@@ -128,9 +97,8 @@ class FileDropServiceManagementTests {
         FileDrop activeDrop = activeDrop(2, 10);
         Instant newExpiration = NOW.plusSeconds(7_200);
         useManagedDrop(activeDrop);
-        when(clock.instant()).thenReturn(NOW);
 
-        var details = fileDropService.updateExpiration(
+        var details = managementService.updateExpiration(
                 DROP_ID,
                 MANAGEMENT_TOKEN,
                 new UpdateExpirationRequest(newExpiration)
@@ -145,9 +113,8 @@ class FileDropServiceManagementTests {
     void changesMaximumDownloadsWhenItExceedsCurrentCount() {
         FileDrop activeDrop = activeDrop(3, 10);
         useManagedDrop(activeDrop);
-        when(clock.instant()).thenReturn(NOW);
 
-        var details = fileDropService.updateMaxDownloads(
+        var details = managementService.updateMaxDownloads(
                 DROP_ID,
                 MANAGEMENT_TOKEN,
                 new UpdateMaxDownloadsRequest(5)
@@ -163,9 +130,8 @@ class FileDropServiceManagementTests {
     void maximumDownloadsMustExceedCurrentDownloadCount() {
         FileDrop activeDrop = activeDrop(3, 10);
         useManagedDrop(activeDrop);
-        when(clock.instant()).thenReturn(NOW);
 
-        assertThatThrownBy(() -> fileDropService.updateMaxDownloads(
+        assertThatThrownBy(() -> managementService.updateMaxDownloads(
                 DROP_ID,
                 MANAGEMENT_TOKEN,
                 new UpdateMaxDownloadsRequest(3)
@@ -182,7 +148,7 @@ class FileDropServiceManagementTests {
         FileDrop activeDrop = activeDrop(0, 10);
         useManagedDrop(activeDrop);
 
-        fileDropService.requestDeletion(DROP_ID, MANAGEMENT_TOKEN);
+        managementService.requestDeletion(DROP_ID, MANAGEMENT_TOKEN);
 
         assertThat(activeDrop.getStatus()).isEqualTo(FileDropStatus.DELETION_PENDING);
         verify(fileDropRepository).save(activeDrop);
@@ -194,7 +160,7 @@ class FileDropServiceManagementTests {
         deletionPendingDrop.markDeletionPending();
         useManagedDrop(deletionPendingDrop);
 
-        fileDropService.requestDeletion(DROP_ID, MANAGEMENT_TOKEN);
+        managementService.requestDeletion(DROP_ID, MANAGEMENT_TOKEN);
 
         assertThat(deletionPendingDrop.getStatus()).isEqualTo(FileDropStatus.DELETION_PENDING);
         verify(fileDropRepository, never()).save(deletionPendingDrop);

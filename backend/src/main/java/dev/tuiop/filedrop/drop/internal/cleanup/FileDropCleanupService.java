@@ -11,7 +11,6 @@ import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -22,35 +21,32 @@ import java.util.UUID;
 public class FileDropCleanupService {
 
     private final FileDropRepository repository;
-    private final Integer CLEANUP_BATCH_SIZE;
-    private final Duration PENDING_TIMEOUT;
+    private final int cleanupBatchSize;
+    private final Duration pendingTimeout;
     private final ObjectStorage objectStorage;
     private final TransactionTemplate transactionTemplate;
-    private final Clock clock;
 
     public FileDropCleanupService(FileDropRepository repository,
-                                  @Value("${application.cleanup.batch-size}") Integer CLEANUP_BATCH_SIZE,
-                                  @Value("${application.cleanup.pending-timeout}") Duration PENDING_TIMEOUT,
+                                  @Value("${application.cleanup.batch-size}") int cleanupBatchSize,
+                                  @Value("${application.cleanup.pending-timeout}") Duration pendingTimeout,
                                   ObjectStorage objectStorage,
-                                  TransactionTemplate transactionTemplate,
-                                  Clock clock) {
+                                  TransactionTemplate transactionTemplate) {
         this.repository = repository;
-        this.CLEANUP_BATCH_SIZE = CLEANUP_BATCH_SIZE;
-        this.PENDING_TIMEOUT = PENDING_TIMEOUT;
+        this.cleanupBatchSize = cleanupBatchSize;
+        this.pendingTimeout = pendingTimeout;
         this.objectStorage = objectStorage;
         this.transactionTemplate = transactionTemplate;
-        this.clock = clock;
     }
 
     public void cleanup() {
 
-        Instant now = clock.instant();
-        Instant stalePendingBefore = now.minus(PENDING_TIMEOUT);
+        Instant now = Instant.now();
+        Instant stalePendingBefore = now.minus(pendingTimeout);
 
         List<UUID> ids = repository.findCleanupCandidatesIds(
                 now,
                 stalePendingBefore,
-                Limit.of(CLEANUP_BATCH_SIZE)
+                Limit.of(cleanupBatchSize)
         );
 
         for (var id : ids) {
@@ -95,7 +91,7 @@ public class FileDropCleanupService {
 
         transactionTemplate.executeWithoutResult(transactionStatus ->
         {
-            repository.findById(id).ifPresent(drop -> drop.markDeleted(clock.instant()));
+            repository.findById(id).ifPresent(drop -> drop.markDeleted(Instant.now()));
         });
 
 

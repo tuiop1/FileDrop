@@ -23,4 +23,16 @@ class TokenServiceImplTests {
         assertThat(tokenService.hashToken("token"))
                 .isEqualTo("3c469e9d6c5875d37a43f353d4f88e61fcf812c66eee3457465a40b0da4153e0");
     }
+
+    @Test
+    void validatesOnlyCanonicalTokensWithTheConfiguredEntropyLength() {
+        String token = tokenService.generateToken();
+
+        assertThat(tokenService.isValidFormat(token)).isTrue();
+        assertThat(tokenService.isValidFormat(null)).isFalse();
+        assertThat(tokenService.isValidFormat("a".repeat(42))).isFalse();
+        assertThat(tokenService.isValidFormat("a".repeat(44))).isFalse();
+        assertThat(tokenService.isValidFormat(token + "=")).isFalse();
+        assertThat(tokenService.isValidFormat("!" + token.substring(1))).isFalse();
+    }
 }

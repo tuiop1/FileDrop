@@ -17,27 +17,31 @@ import java.nio.file.Path;
 class FileValidatorImpl implements FileValidator {
 
 
-    private final DataSize MAX_FILEDROP_SIZE;
+    private final DataSize maxFileDropSize;
     private final ContentTypeDetector contentTypeDetector;
     private final MalwareScanner malwareScanner;
 
-    public FileValidatorImpl(@Value("${application.file.max-size}") DataSize MAX_FILEDROP_SIZE, ContentTypeDetector contentTypeDetector, MalwareScanner malwareScanner) {
-        this.MAX_FILEDROP_SIZE = MAX_FILEDROP_SIZE;
+    public FileValidatorImpl(
+            @Value("${application.file.max-size}") DataSize maxFileDropSize,
+            ContentTypeDetector contentTypeDetector,
+            MalwareScanner malwareScanner
+    ) {
+        this.maxFileDropSize = maxFileDropSize;
         this.contentTypeDetector = contentTypeDetector;
         this.malwareScanner = malwareScanner;
     }
 
     // validation before saving the file to temporary storage
     @Override
-    public void firstFileValidation(MultipartFile file) {
+    public void validateUpload(MultipartFile file) {
 
 
         if (file.isEmpty()) {
             throw new EmptyFileException();
         }
 
-        if (file.getSize() > MAX_FILEDROP_SIZE.toBytes()) {
-            throw new FileTooLargeException(MAX_FILEDROP_SIZE.toBytes());
+        if (file.getSize() > maxFileDropSize.toBytes()) {
+            throw new FileTooLargeException(maxFileDropSize.toBytes());
         }
 
         String fileOriginalName = file.getOriginalFilename();
@@ -52,7 +56,7 @@ class FileValidatorImpl implements FileValidator {
     }
 
     @Override
-    public String preStoreFileValidation(Path path) {
+    public String validateStagedFile(Path path) {
 
 
         String contentType = contentTypeDetector.detect(path);

@@ -19,7 +19,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.time.Clock;
 import java.time.Instant;
 import java.util.Optional;
 
@@ -38,7 +37,7 @@ class FileDropServicePasswordTests {
     private static final String TOKEN_HASH = "download-token-hash";
     private static final String PASSWORD_HASH = "password-hash";
     private static final String VALID_PASSWORD = "correct horse battery staple";
-    private static final Instant NOW = Instant.parse("2026-08-14T12:00:00Z");
+    private static final Instant FUTURE = Instant.parse("2100-01-01T00:00:00Z");
 
     @Mock
     private FileDropRepository fileDropRepository;
@@ -64,16 +63,13 @@ class FileDropServicePasswordTests {
     private FileDropProperties fileDropProperties;
     @Mock
     private TransactionTemplate transactionTemplate;
-    @Mock
-    private Clock clock;
-
     @InjectMocks
     private FileDropService fileDropService;
 
     @BeforeEach
     void setUp() {
+        when(tokenService.isValidFormat(TOKEN)).thenReturn(true);
         when(tokenService.hashToken(TOKEN)).thenReturn(TOKEN_HASH);
-        when(clock.instant()).thenReturn(NOW);
         when(fileDropRepository.findByDownloadTokenHash(TOKEN_HASH))
                 .thenReturn(Optional.of(protectedDrop()));
     }
@@ -149,7 +145,7 @@ class FileDropServicePasswordTests {
     private FileDrop protectedDrop() {
         return FileDrop.builder()
                 .status(FileDropStatus.AVAILABLE)
-                .expiresAt(NOW.plusSeconds(3_600))
+                .expiresAt(FUTURE)
                 .maxDownloads(5)
                 .downloadCount(0)
                 .passwordHash(PASSWORD_HASH)
@@ -159,7 +155,7 @@ class FileDropServicePasswordTests {
     private FileDrop unprotectedDrop() {
         return FileDrop.builder()
                 .status(FileDropStatus.AVAILABLE)
-                .expiresAt(NOW.plusSeconds(3_600))
+                .expiresAt(FUTURE)
                 .maxDownloads(5)
                 .downloadCount(0)
                 .build();

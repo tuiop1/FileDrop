@@ -1,6 +1,5 @@
 package dev.tuiop.filedrop.crypto.internal;
 
-import dev.tuiop.filedrop.crypto.MasterKeyProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 

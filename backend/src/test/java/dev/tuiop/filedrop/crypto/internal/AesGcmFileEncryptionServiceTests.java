@@ -1,7 +1,6 @@
 package dev.tuiop.filedrop.crypto.internal;
 
 import dev.tuiop.filedrop.crypto.EncryptedFile;
-import dev.tuiop.filedrop.crypto.MasterKeyProvider;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 

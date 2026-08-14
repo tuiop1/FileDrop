@@ -2,18 +2,20 @@ package dev.tuiop.filedrop.drop.internal.validation;
 
 import dev.tuiop.filedrop.drop.internal.dto.CreateDropRequest;
 import dev.tuiop.filedrop.drop.internal.exception.InvalidExpirationException;
+import dev.tuiop.filedrop.drop.internal.exception.InvalidMaxDownloadsException;
 import dev.tuiop.filedrop.drop.internal.exception.InvalidPasswordException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.password.CompromisedPasswordChecker;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
 @Component
-public class CreateDropRequestValidator {
+public class DropRequestValidator {
 
     private static final int MIN_PASSWORD_LENGTH = 8;
     private static final int MAX_PASSWORD_LENGTH = 128;
@@ -21,11 +23,13 @@ public class CreateDropRequestValidator {
     private final CompromisedPasswordChecker compromisedPasswordChecker;
     private final Duration minExpiration;
     private final Duration maxExpiration;
+    private final Clock clock;
 
-    public CreateDropRequestValidator(
+    public DropRequestValidator(
             CompromisedPasswordChecker compromisedPasswordChecker,
             @Value("${application.file.expiration.min}") Duration minExpiration,
-            @Value("${application.file.expiration.max}") Duration maxExpiration
+            @Value("${application.file.expiration.max}") Duration maxExpiration,
+            Clock clock
     ) {
         if (minExpiration.isNegative() || minExpiration.isZero()) {
             throw new IllegalArgumentException("Minimum expiration duration must be positive.");
@@ -40,6 +44,7 @@ public class CreateDropRequestValidator {
         this.compromisedPasswordChecker = compromisedPasswordChecker;
         this.minExpiration = minExpiration;
         this.maxExpiration = maxExpiration;
+        this.clock = clock;
     }
 
     public void validate(CreateDropRequest request) {
@@ -47,26 +52,26 @@ public class CreateDropRequestValidator {
             throw new IllegalArgumentException("Create drop request must not be null.");
         }
 
-        Integer maxDownloads = request.maxDownloads();
-
-        if (maxDownloads == null) {
-            throw new IllegalArgumentException("Maximum downloads must not be null.");
-        }
-
-        if (maxDownloads < 1 || maxDownloads > 100) {
-            throw new IllegalArgumentException("Maximum downloads must be between 1 and 100.");
-        }
+        validateMaxDownloads(request.maxDownloads());
 
         validateExpiration(request.expiresAt());
         validatePassword(request.password());
     }
 
-    private void validateExpiration(Instant expiresAt) {
+    public void validateMaxDownloads(Integer maxDownloads) {
+        if (maxDownloads == null || maxDownloads < 1 || maxDownloads > 100) {
+            throw new InvalidMaxDownloadsException(
+                    "Maximum downloads must be between 1 and 100."
+            );
+        }
+    }
+
+    public void validateExpiration(Instant expiresAt) {
         if (expiresAt == null) {
             throw new InvalidExpirationException("Expiration time must not be null.");
         }
 
-        Instant now = Instant.now();
+        Instant now = clock.instant();
         Instant earliestExpiration = now.plus(minExpiration);
         Instant latestExpiration = now.plus(maxExpiration);
 

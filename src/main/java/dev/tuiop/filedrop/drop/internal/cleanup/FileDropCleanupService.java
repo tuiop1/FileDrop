@@ -45,17 +45,18 @@ public class FileDropCleanupService {
     public void cleanup() {
 
         Instant now = clock.instant();
+        Instant stalePendingBefore = now.minus(PENDING_TIMEOUT);
 
         List<UUID> ids = repository.findCleanupCandidatesIds(
                 now,
-                now.minus(PENDING_TIMEOUT),
+                stalePendingBefore,
                 Limit.of(CLEANUP_BATCH_SIZE)
         );
 
         for (var id : ids) {
             try{
 
-                cleanupOne(id);
+                cleanupOne(id, now, stalePendingBefore);
             } catch (Exception e) {
                 log.error("Failed to cleanup FileDrop {}", id, e);
             }
@@ -65,7 +66,7 @@ public class FileDropCleanupService {
 
     }
 
-    private void cleanupOne(UUID id) {
+    private void cleanupOne(UUID id, Instant now, Instant stalePendingBefore) {
         String storageKey = transactionTemplate.execute(status ->
                 {
                    FileDrop drop = repository.findById(id).orElse(null);
@@ -74,7 +75,7 @@ public class FileDropCleanupService {
                        return null ;
                    }
 
-                   if(drop.getStatus() == FileDropStatus.DELETED){
+                   if (!isCleanupCandidate(drop, now, stalePendingBefore)) {
                        return null;
                    }
                    drop.markDeletionPending();
@@ -99,6 +100,20 @@ public class FileDropCleanupService {
 
 
 
+    }
+
+    private boolean isCleanupCandidate(
+            FileDrop drop,
+            Instant now,
+            Instant stalePendingBefore
+    ) {
+        return switch (drop.getStatus()) {
+            case DELETION_PENDING, FAILED -> true;
+            case PENDING -> !drop.getCreatedAt().isAfter(stalePendingBefore);
+            case AVAILABLE -> !drop.getExpiresAt().isAfter(now)
+                    || drop.getDownloadCount() >= drop.getMaxDownloads();
+            case DELETED -> false;
+        };
     }
 
 

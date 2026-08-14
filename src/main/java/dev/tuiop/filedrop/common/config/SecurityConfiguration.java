@@ -21,6 +21,12 @@ class SecurityConfiguration {
 					.matcher(HttpMethod.POST, "/api/v1/drops");
 			RequestMatcher downloadDrop = withDefaults()
 						.matcher(HttpMethod.GET, "/api/v1/drops/d/{token}");
+			RequestMatcher getDropDetails = withDefaults()
+						.matcher(HttpMethod.GET, "/api/v1/drops/{id}");
+			RequestMatcher updateDropExpiration = withDefaults()
+						.matcher(HttpMethod.PATCH, "/api/v1/drops/{id}/expiration");
+			RequestMatcher updateDropMaxDownloads = withDefaults()
+						.matcher(HttpMethod.PATCH, "/api/v1/drops/{id}/max-downloads");
 			RequestMatcher deleteDrop = withDefaults()
 						.matcher(HttpMethod.DELETE, "/api/v1/drops/{id}");
 
@@ -28,7 +34,14 @@ class SecurityConfiguration {
 					.csrf(csrf -> csrf.disable())
 					.authorizeHttpRequests(authorize -> authorize
 							.dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
-									.requestMatchers(createDrop, downloadDrop, deleteDrop).permitAll()
+									.requestMatchers(
+											createDrop,
+											downloadDrop,
+											getDropDetails,
+											updateDropExpiration,
+											updateDropMaxDownloads,
+											deleteDrop
+									).permitAll()
 						.anyRequest().denyAll()
 				);
 

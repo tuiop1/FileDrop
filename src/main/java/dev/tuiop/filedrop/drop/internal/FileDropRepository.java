@@ -19,6 +19,8 @@ public interface FileDropRepository extends JpaRepository<FileDrop, UUID> {
 
     Optional<FileDrop> findByDownloadTokenHash(String downloadTokenHash);
 
+    Optional<FileDrop> findByIdAndManagementTokenHash(UUID id, String managementTokenHash);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             select fileDrop

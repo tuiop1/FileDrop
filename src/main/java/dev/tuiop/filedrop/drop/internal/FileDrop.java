@@ -116,6 +116,21 @@ public class FileDrop {
     int getDownloadsRemaining() {
         return maxDownloads - downloadCount;
     }
+
+    void changeExpiration(Instant expiresAt) {
+        this.expiresAt = Objects.requireNonNull(expiresAt, "expiresAt must not be null");
+    }
+
+    void changeMaxDownloads(int maxDownloads) {
+        if (maxDownloads < 1 || maxDownloads > 100 || maxDownloads <= downloadCount) {
+            throw new IllegalArgumentException(
+                    "Maximum downloads must be between 1 and 100 and exceed the current download count."
+            );
+        }
+
+        this.maxDownloads = maxDownloads;
+    }
+
     public void markDeletionPending() {
         status = FileDropStatus.DELETION_PENDING;
     }

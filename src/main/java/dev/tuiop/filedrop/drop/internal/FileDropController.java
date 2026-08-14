@@ -3,6 +3,9 @@ package dev.tuiop.filedrop.drop.internal;
 import dev.tuiop.filedrop.drop.internal.dto.CreateDropRequest;
 import dev.tuiop.filedrop.drop.internal.dto.CreateDropResponse;
 import dev.tuiop.filedrop.drop.internal.dto.DropDownloadResult;
+import dev.tuiop.filedrop.drop.internal.dto.FileDropDetailsResponse;
+import dev.tuiop.filedrop.drop.internal.dto.UpdateExpirationRequest;
+import dev.tuiop.filedrop.drop.internal.dto.UpdateMaxDownloadsRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
@@ -59,6 +62,33 @@ public class FileDropController {
 
 
     }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<FileDropDetailsResponse> getDetails(
+            @PathVariable UUID id,
+            @RequestHeader("X-Management-Token") String managementToken
+    ) {
+        return ResponseEntity.ok(fileDropService.getDetails(id, managementToken));
+    }
+
+    @PatchMapping("/{id}/expiration")
+    public ResponseEntity<FileDropDetailsResponse> updateExpiration(
+            @PathVariable UUID id,
+            @RequestHeader("X-Management-Token") String managementToken,
+            @Valid @RequestBody UpdateExpirationRequest request
+    ) {
+        return ResponseEntity.ok(fileDropService.updateExpiration(id, managementToken, request));
+    }
+
+    @PatchMapping("/{id}/max-downloads")
+    public ResponseEntity<FileDropDetailsResponse> updateMaxDownloads(
+            @PathVariable UUID id,
+            @RequestHeader("X-Management-Token") String managementToken,
+            @Valid @RequestBody UpdateMaxDownloadsRequest request
+    ) {
+        return ResponseEntity.ok(fileDropService.updateMaxDownloads(id, managementToken, request));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable UUID id,
                                        @RequestHeader("X-Management-Token") String managementToken){

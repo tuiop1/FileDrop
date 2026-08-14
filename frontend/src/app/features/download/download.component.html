@@ -1,0 +1,164 @@
+<main class="download-page">
+  <section class="download-panel" aria-labelledby="download-title" [attr.aria-busy]="loading()">
+    <div class="download-panel__icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" focusable="false">
+        <path d="M12 3v11m0 0 4-4m-4 4-4-4" />
+        <path d="M5 15.5v2.25A2.25 2.25 0 0 0 7.25 20h9.5A2.25 2.25 0 0 0 19 17.75V15.5" />
+      </svg>
+    </div>
+
+    <p class="eyebrow">Secure file transfer</p>
+    <h1 id="download-title">A file is ready to download</h1>
+    @if (passwordRequired()) {
+      <p id="download-help" class="download-panel__intro">
+        This file is password protected. Enter the password shared by the sender to continue.
+      </p>
+
+      <form class="password-form" (submit)="submitPassword($event)">
+        <label for="download-password">Download password</label>
+        <div class="password-field">
+          <input
+            #passwordInput
+            id="download-password"
+            [type]="showPassword() ? 'text' : 'password'"
+            [formControl]="passwordControl"
+            autocomplete="current-password"
+            placeholder="Enter password"
+            [readOnly]="loading() || downloadsRemaining() === 0"
+            [attr.aria-invalid]="
+              (passwordControl.invalid && passwordControl.touched) || passwordError() !== null
+            "
+            [attr.aria-describedby]="
+              passwordError() || (passwordControl.invalid && passwordControl.touched)
+                ? 'download-password-help download-password-error'
+                : 'download-password-help'
+            "
+            (input)="clearPasswordError()"
+          />
+          <button
+            class="password-toggle"
+            type="button"
+            [disabled]="loading() || downloadsRemaining() === 0"
+            [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
+            (click)="showPassword.set(!showPassword())"
+          >
+            {{ showPassword() ? 'Hide' : 'Show' }}
+          </button>
+        </div>
+        <p id="download-password-help" class="password-help">
+          Passwords are sent only to the download endpoint and never placed in the URL.
+        </p>
+        @if (passwordError(); as message) {
+          <p id="download-password-error" class="password-error" role="alert">{{ message }}</p>
+        } @else if (passwordControl.invalid && passwordControl.touched) {
+          <p id="download-password-error" class="password-error" role="alert">
+            Enter the 8–128 character password supplied by the sender.
+          </p>
+        }
+
+        <button
+          class="download-button"
+          type="submit"
+          [disabled]="loading() || downloadsRemaining() === 0"
+          aria-describedby="download-help"
+        >
+          @if (loading()) {
+            <span class="spinner" aria-hidden="true"></span>
+            <span>Checking password…</span>
+          } @else {
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M12 3v11m0 0 4-4m-4 4-4-4" />
+              <path d="M5 19h14" />
+            </svg>
+            <span>{{ downloadedFilename() ? 'Download again' : 'Unlock and download' }}</span>
+          }
+        </button>
+      </form>
+    } @else {
+      <p id="download-help" class="download-panel__intro">
+        File details are kept private until you request the download. Your browser will save the
+        file using the name supplied by the server.
+      </p>
+
+      <button
+        class="download-button"
+        type="button"
+        (click)="download()"
+        [disabled]="loading() || downloadsRemaining() === 0"
+        aria-describedby="download-help"
+      >
+        @if (loading()) {
+          <span class="spinner" aria-hidden="true"></span>
+          <span>Preparing download…</span>
+        } @else {
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M12 3v11m0 0 4-4m-4 4-4-4" />
+            <path d="M5 19h14" />
+          </svg>
+          <span>{{ downloadedFilename() ? 'Download again' : 'Download file' }}</span>
+        }
+      </button>
+    }
+
+    @if (downloadedFilename(); as filename) {
+      <div class="result result--success" role="status" aria-live="polite">
+        <span class="result__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <path d="m6.5 12.5 3.25 3.25 7.75-8" />
+          </svg>
+        </span>
+        <div>
+          <h2>Download started</h2>
+          <p class="filename" [title]="filename">{{ filename }}</p>
+          @if (downloadsRemaining(); as remaining) {
+            <p class="result__meta">
+              {{ remaining }} {{ remaining === 1 ? 'download' : 'downloads' }} remaining
+            </p>
+          } @else if (downloadsRemaining() === 0) {
+            <p class="result__meta">No downloads remaining</p>
+          }
+        </div>
+      </div>
+    }
+
+    @if (error(); as apiError) {
+      <div class="result result--error" role="alert">
+        <span class="result__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <path d="M12 8v5m0 3.25v.01" />
+            <circle cx="12" cy="12" r="9" />
+          </svg>
+        </span>
+        <div>
+          <h2>Download could not start</h2>
+          <p>{{ apiError.message }}</p>
+
+          @if (apiError.code || (apiError.status !== null && apiError.status > 0)) {
+            <p class="result__meta result__meta--code">
+              @if (apiError.code) {
+                <span>{{ apiError.code }}</span>
+              }
+              @if (apiError.status !== null && apiError.status > 0) {
+                <span>HTTP {{ apiError.status }}</span>
+              }
+            </p>
+          }
+
+          @if (fieldErrors().length > 0) {
+            <ul class="field-errors">
+              @for (fieldError of fieldErrors(); track fieldError.field + fieldError.message) {
+                <li>
+                  <strong>{{ fieldError.field }}:</strong> {{ fieldError.message }}
+                </li>
+              }
+            </ul>
+          }
+        </div>
+      </div>
+    }
+  </section>
+
+  <p class="privacy-note">
+    FileDrop does not preview or expose file information before a download.
+  </p>
+</main>

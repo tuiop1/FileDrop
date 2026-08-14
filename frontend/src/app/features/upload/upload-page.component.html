@@ -1,0 +1,323 @@
+<main class="page page--upload">
+  <section class="upload-hero" aria-labelledby="upload-title">
+    @if (uploadResult(); as result) {
+      <div class="success-panel" aria-live="polite">
+        <div class="success-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <path d="m5 12.5 4.1 4L19 7" />
+          </svg>
+        </div>
+        <p class="eyebrow">Upload complete</p>
+        <h1 id="upload-title">Your file is ready to share</h1>
+        <p class="success-file">
+          <span class="file-type-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false">
+              <path d="M7 3.5h6.5L18 8v12.5H7z" />
+              <path d="M13.5 3.5V8H18" />
+            </svg>
+          </span>
+          <span>
+            <strong>{{ result.fileName }}</strong>
+            <small>Expires {{ result.response.expiresAt | date: 'medium' }}</small>
+          </span>
+        </p>
+
+        <div class="link-group">
+          <label for="share-url">Share link</label>
+          <div class="copy-field">
+            <input id="share-url" type="text" [value]="result.shareUrl" readonly />
+            <button
+              class="icon-button copy-button"
+              type="button"
+              (click)="copyLink(result.shareUrl, 'share')"
+              [attr.aria-label]="copiedLink() === 'share' ? 'Share link copied' : 'Copy share link'"
+            >
+              @if (copiedLink() === 'share') {
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.1 4L19 7" /></svg>
+                <span>Copied</span>
+              } @else {
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="8" y="8" width="11" height="11" rx="2" />
+                  <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
+                </svg>
+                <span>Copy</span>
+              }
+            </button>
+          </div>
+          <p class="field-hint">
+            Send this link to anyone who should be able to download the file.
+          </p>
+        </div>
+
+        <div class="link-group link-group--secret">
+          <div class="label-row">
+            <label for="management-url">Management link</label>
+            <span class="secret-badge">Keep private</span>
+          </div>
+          <div class="copy-field">
+            <input id="management-url" type="text" [value]="result.managementUrl" readonly />
+            <button
+              class="icon-button copy-button"
+              type="button"
+              (click)="copyLink(result.managementUrl, 'management')"
+              [attr.aria-label]="
+                copiedLink() === 'management' ? 'Management link copied' : 'Copy management link'
+              "
+            >
+              @if (copiedLink() === 'management') {
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.1 4L19 7" /></svg>
+                <span>Copied</span>
+              } @else {
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="8" y="8" width="11" height="11" rx="2" />
+                  <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
+                </svg>
+                <span>Copy</span>
+              }
+            </button>
+          </div>
+          <p class="field-hint">
+            This link contains the secret token needed to edit or delete the drop.
+          </p>
+        </div>
+
+        @if (copyFailed()) {
+          <p class="inline-notice inline-notice--error" role="status">
+            Copy was blocked by the browser. Select the link and copy it manually.
+          </p>
+        }
+
+        <button class="button button--primary button--wide" type="button" (click)="uploadAnother()">
+          Upload another file
+        </button>
+      </div>
+    } @else {
+      <header class="hero-copy">
+        <p class="eyebrow">Simple, secure file sharing</p>
+        <h1 id="upload-title">Send a file in a few clicks</h1>
+        <p>Upload up to 100 MB, choose when it expires, and share one clean link.</p>
+      </header>
+
+      <form class="upload-panel" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+        <div
+          class="drop-zone"
+          [class.drop-zone--active]="isDragging()"
+          [class.drop-zone--selected]="selectedFile()"
+          (dragenter)="onDragEnter($event)"
+          (dragover)="onDragOver($event)"
+          (dragleave)="onDragLeave($event)"
+          (drop)="onDrop($event)"
+        >
+          <input
+            #fileInput
+            id="drop-file"
+            class="visually-hidden"
+            type="file"
+            [accept]="acceptedFileTypes"
+            (change)="onFileInput($event)"
+            [attr.aria-describedby]="fileError() ? 'file-selection-error' : null"
+          />
+
+          @if (selectedFile(); as file) {
+            <div class="selected-file">
+              <span class="selected-file__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path d="M7 3.5h6.5L18 8v12.5H7z" />
+                  <path d="M13.5 3.5V8H18" />
+                </svg>
+              </span>
+              <span class="selected-file__details">
+                <strong>{{ file.name }}</strong>
+                <small>{{ file.size | fileSize }}</small>
+              </span>
+              <span class="selected-file__actions">
+                <button
+                  class="button button--quiet button--small"
+                  type="button"
+                  (click)="chooseAnother()"
+                >
+                  Change
+                </button>
+                <button
+                  class="icon-button icon-button--muted"
+                  type="button"
+                  aria-label="Remove selected file"
+                  (click)="removeFile()"
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="m7 7 10 10M17 7 7 17" />
+                  </svg>
+                </button>
+              </span>
+            </div>
+          } @else {
+            <label class="drop-zone__prompt" for="drop-file">
+              <span class="upload-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5" />
+                  <path d="M5 14v4.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V14" />
+                </svg>
+              </span>
+              <strong>Drop your file here</strong>
+              <span>or <em>browse your device</em></span>
+              <small>Documents, images, archives, audio, or video · 100 MB max</small>
+            </label>
+          }
+        </div>
+
+        @if (fileError()) {
+          <p id="file-selection-error" class="inline-notice inline-notice--error" role="alert">
+            {{ fileError() }}
+          </p>
+        }
+
+        <details class="options" open>
+          <summary>
+            <span>
+              <strong>Options</strong>
+              <small>Expiration, downloads, and password</small>
+            </span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 9 5 5 5-5" /></svg>
+          </summary>
+
+          <div class="options-grid">
+            <div class="form-field form-field--wide">
+              <label for="expires-at">Expiration</label>
+              <input
+                id="expires-at"
+                type="datetime-local"
+                formControlName="expiresAt"
+                [min]="minimumExpiration"
+                [max]="maximumExpiration"
+                [attr.aria-invalid]="form.controls.expiresAt.invalid"
+                [attr.aria-describedby]="
+                  form.controls.expiresAt.invalid && form.controls.expiresAt.touched
+                    ? 'expires-error'
+                    : null
+                "
+              />
+              @if (form.controls.expiresAt.invalid && form.controls.expiresAt.touched) {
+                <small id="expires-error" class="field-error" role="alert"
+                  >Choose a time between about 1 minute and 7 days from now.</small
+                >
+              } @else {
+                <small
+                  >Uses your local time and is sent to the backend as an ISO-8601 instant.</small
+                >
+              }
+            </div>
+
+            <div class="form-field">
+              <label for="max-downloads">Maximum downloads</label>
+              <input
+                id="max-downloads"
+                type="number"
+                formControlName="maxDownloads"
+                min="1"
+                max="100"
+                inputmode="numeric"
+                [attr.aria-invalid]="form.controls.maxDownloads.invalid"
+                [attr.aria-describedby]="
+                  form.controls.maxDownloads.invalid && form.controls.maxDownloads.touched
+                    ? 'max-downloads-error'
+                    : 'max-downloads-hint'
+                "
+              />
+              @if (form.controls.maxDownloads.invalid && form.controls.maxDownloads.touched) {
+                <small id="max-downloads-error" class="field-error" role="alert"
+                  >Enter a whole number from 1 to 100.</small
+                >
+              } @else {
+                <small id="max-downloads-hint">The final download can trigger cleanup.</small>
+              }
+            </div>
+
+            <div class="form-field form-field--password">
+              <label for="password"> Password <span>Optional</span> </label>
+              <div class="password-field">
+                <input
+                  id="password"
+                  [type]="showPassword() ? 'text' : 'password'"
+                  formControlName="password"
+                  autocomplete="new-password"
+                  placeholder="8–128 characters"
+                  [attr.aria-invalid]="form.controls.password.invalid"
+                  [attr.aria-describedby]="
+                    form.controls.password.invalid && form.controls.password.touched
+                      ? 'password-error'
+                      : 'password-hint'
+                  "
+                />
+                <button
+                  type="button"
+                  class="password-toggle"
+                  (click)="showPassword.set(!showPassword())"
+                  [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
+                >
+                  @if (showPassword()) {
+                    Hide
+                  } @else {
+                    Show
+                  }
+                </button>
+              </div>
+              @if (form.controls.password.invalid && form.controls.password.touched) {
+                <small id="password-error" class="field-error" role="alert"
+                  >Use 8–128 non-blank Unicode characters without control characters.</small
+                >
+              } @else {
+                <small id="password-hint"
+                  >Recipients will be asked for this password before the download starts.</small
+                >
+              }
+            </div>
+          </div>
+        </details>
+
+        @if (apiError(); as error) {
+          <app-api-error [error]="error" />
+        }
+
+        <button
+          class="button button--primary button--submit"
+          type="submit"
+          [disabled]="isUploading()"
+        >
+          @if (isUploading()) {
+            <span class="spinner" aria-hidden="true"></span>
+            Uploading and scanning…
+          } @else {
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5" />
+              <path d="M5 14v4.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V14" />
+            </svg>
+            Create file drop
+          }
+        </button>
+      </form>
+
+      <div class="trust-line" aria-label="FileDrop characteristics">
+        <span>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 3.5 5.5 6v5.5c0 4.2 2.6 7.4 6.5 9 3.9-1.6 6.5-4.8 6.5-9V6z" />
+            <path d="m9 12 2 2 4-4" />
+          </svg>
+          Encrypted storage
+        </span>
+        <span>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="8.5" />
+            <path d="M12 7v5l3 2" />
+          </svg>
+          Automatic expiration
+        </span>
+        <span>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 7.5h16M7 4.5h10M8 7.5l.6 12h6.8l.6-12" />
+          </svg>
+          Scheduled cleanup
+        </span>
+      </div>
+    }
+  </section>
+</main>

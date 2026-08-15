@@ -1,6 +1,7 @@
 HELP.md
 .env
 .env.*
+!.env.example
 target/
 /backend/.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/

@@ -1,3 +1,5 @@
+name: filedrop-dev
+
 services:
   postgres:
     image: 'postgres:18.4'
@@ -71,6 +73,35 @@ services:
         /usr/bin/mc admin policy attach local readwrite --user "$${FILEDROP_S3_ACCESS_KEY}"
         echo 'MinIO bucket and FileDrop application user are ready.'
 
+  backend:
+    profiles: ['backend']
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: filedrop-backend:dev
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      clamav:
+        condition: service_started
+      minio-init:
+        condition: service_completed_successfully
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/postgres
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      SPRING_DATA_REDIS_URL: redis://redis:6379
+      FILEDROP_BASE_URL: http://localhost:8080
+      FILEDROP_S3_ENDPOINT: http://minio:9000
+      FILEDROP_S3_ACCESS_KEY: ${FILEDROP_S3_ACCESS_KEY:-filedrop}
+      FILEDROP_S3_SECRET_KEY: ${FILEDROP_S3_SECRET_KEY:-filedrop-local-secret}
+      FILEDROP_CLAMAV_HOST: clamav
+    ports:
+      - '8080:8080'
+
   frontend:
     profiles: ['frontend']
     build:
@@ -78,6 +109,8 @@ services:
       dockerfile: Dockerfile
     extra_hosts:
       - 'host.docker.internal:host-gateway'
+    environment:
+      FILEDROP_BACKEND_URL: ${FILEDROP_BACKEND_URL:-http://host.docker.internal:8080}
     ports:
       - '4200:80'
 

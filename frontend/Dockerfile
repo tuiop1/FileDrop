@@ -12,7 +12,9 @@ RUN npm run build
 
 FROM nginx:alpine AS runtime
 
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+ENV FILEDROP_BACKEND_URL=http://host.docker.internal:8080
+
+COPY nginx.conf /etc/nginx/templates/default.conf.template
 COPY --from=build /app/dist/frontend/browser/ /usr/share/nginx/html/
 
 EXPOSE 80

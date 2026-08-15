@@ -3,9 +3,6 @@ spring:
     name: FileDrop
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/postgres
-    username: postgres
-    password: ${FILEDROP_DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -14,22 +11,26 @@ spring:
       ddl-auto: validate
 
   servlet:
-
     multipart:
       max-file-size: 100MB
       max-request-size: 110MB
 
   modulith:
     events:
-      republish-outstanding-events-on-restart:  true
+      republish-outstanding-events-on-restart: true
       jdbc:
         schema-initialization:
           enabled: true
 
-
-
 application:
-  base-url: http://localhost:8080
+  rate-limit:
+    request:
+      limit: ${FILEDROP_REQUEST_RATE_LIMIT:100}
+      window: ${FILEDROP_REQUEST_RATE_WINDOW:1m}
+
+    upload:
+      limit: ${FILEDROP_UPLOAD_RATE_LIMIT:5}
+      window: ${FILEDROP_UPLOAD_RATE_WINDOW:1m}
 
   temporary-storage:
     directory: ${java.io.tmpdir}/filedrop
@@ -37,17 +38,7 @@ application:
       max-age: 4h
 
   encryption:
-    master-key: ${FILEDROP_MASTER_KEY:}
-    key-version: 1
-
-  storage:
-    s3:
-      endpoint: http://localhost:9000
-      region: us-east-1
-      bucket: filedrop
-      access-key: filedrop
-      secret-key: ${FILEDROP_S3_SECRET_KEY:filedrop-local-secret}
-      path-style: true
+    key-version: ${FILEDROP_MASTER_KEY_VERSION:1}
 
   cleanup:
     batch-size: 50
@@ -60,12 +51,10 @@ application:
       min: 1m
       max: 7d
 
-
-
 clamav:
-  host: localhost
-  port: 3310
   connect-timeout: 2s
   read-timeout: 30s
+
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
+  forward-headers-strategy: native

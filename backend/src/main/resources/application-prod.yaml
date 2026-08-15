@@ -1,0 +1,36 @@
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+
+  data:
+    redis:
+      url: ${SPRING_DATA_REDIS_URL}
+
+  docker:
+    compose:
+      enabled: false
+
+application:
+  base-url: ${FILEDROP_BASE_URL}
+
+  encryption:
+    master-key: ${FILEDROP_MASTER_KEY}
+
+  storage:
+    s3:
+      endpoint: ${FILEDROP_S3_ENDPOINT}
+      region: ${FILEDROP_S3_REGION}
+      bucket: ${FILEDROP_S3_BUCKET}
+      access-key: ${FILEDROP_S3_ACCESS_KEY}
+      secret-key: ${FILEDROP_S3_SECRET_KEY}
+      path-style: ${FILEDROP_S3_PATH_STYLE:false}
+
+clamav:
+  host: ${FILEDROP_CLAMAV_HOST}
+  port: ${FILEDROP_CLAMAV_PORT:3310}

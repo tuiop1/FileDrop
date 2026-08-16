@@ -112,6 +112,7 @@ services:
       - 'host.docker.internal:host-gateway'
     environment:
       FILEDROP_BACKEND_URL: ${FILEDROP_BACKEND_URL:-http://host.docker.internal:8080}
+      FILEDROP_PROXY_TIMEOUT: ${FILEDROP_PROXY_TIMEOUT:-15m}
     ports:
       - '4200:80'
 

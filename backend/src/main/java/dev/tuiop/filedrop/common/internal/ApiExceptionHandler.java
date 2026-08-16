@@ -25,7 +25,7 @@ public class ApiExceptionHandler {
         String route = resolveRoute(request);
 
         log.atError()
-                .addKeyValue("error.code", exception.code())
+                .addKeyValue("event.code", exception.code())
                 .addKeyValue("http.request.method", request.getMethod())
                 .addKeyValue("url.route", route)
                 .setCause(exception)

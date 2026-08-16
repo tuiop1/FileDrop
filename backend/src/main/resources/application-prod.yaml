@@ -30,16 +30,13 @@ application:
 
   storage:
     s3:
-      endpoint: ${FILEDROP_S3_ENDPOINT}
       region: ${FILEDROP_S3_REGION}
       bucket: ${FILEDROP_S3_BUCKET}
-      access-key: ${FILEDROP_S3_ACCESS_KEY}
-      secret-key: ${FILEDROP_S3_SECRET_KEY}
-      path-style: ${FILEDROP_S3_PATH_STYLE:false}
 
 clamav:
   host: ${FILEDROP_CLAMAV_HOST}
   port: ${FILEDROP_CLAMAV_PORT:3310}
+  read-timeout: ${FILEDROP_CLAMAV_READ_TIMEOUT:150s}
 
 logging:
   level:

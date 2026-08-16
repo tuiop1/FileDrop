@@ -1,0 +1,47 @@
+{
+	admin off
+}
+
+# This listener is internal-only and remains available regardless of whether the
+# public site uses HTTP locally or automatic HTTPS in production.
+http://:8081 {
+	respond /health "OK" 200
+}
+
+{$FILEDROP_CADDY_ADDRESS} {
+	encode zstd gzip
+
+	request_body {
+		max_size 110MB
+	}
+
+	@api path /api /api/*
+	handle @api {
+		reverse_proxy {$FILEDROP_BACKEND_URL} {
+			transport http {
+				dial_timeout 5s
+				response_header_timeout {$FILEDROP_PROXY_TIMEOUT}
+			}
+		}
+	}
+
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), geolocation=(), microphone=()"
+		-Server
+	}
+
+	log {
+		output stdout
+		format json
+	}
+}

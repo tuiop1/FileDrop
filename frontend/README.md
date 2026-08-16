@@ -72,13 +72,13 @@ The optimized browser application is written to `dist/frontend/browser/`.
 
 The Java backend is intentionally not a Compose service. Start the infrastructure and Spring Boot manually using the commands above.
 
-If you prefer to serve the frontend from its production Nginx image instead of using `npm start`, run this from the repository root:
+If you prefer to serve the frontend from its production Caddy image instead of using `npm start`, run this from the repository root:
 
 ```bash
 docker compose --profile frontend up --build frontend
 ```
 
-Then open `http://localhost:4200`. Nginx serves Angular, falls back to `index.html` for client-side routes, and proxies `/api` through `host.docker.internal` to the manually launched backend on `http://localhost:8080`.
+Then open `http://localhost:4200`. Caddy serves Angular, falls back to `index.html` for client-side routes, and proxies `/api` through `host.docker.internal` to the manually launched backend on `http://localhost:8080`.
 
 The frontend uses a separate Compose profile so infrastructure-only commands do not start it automatically. Compose never starts the Java backend. The host-backend command above disables Spring Boot's automatic Compose lifecycle because the infrastructure is started and checked explicitly first.
 

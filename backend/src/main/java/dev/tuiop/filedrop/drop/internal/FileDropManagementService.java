@@ -10,6 +10,7 @@ import dev.tuiop.filedrop.drop.internal.exception.InvalidMaxDownloadsException;
 import dev.tuiop.filedrop.drop.internal.validation.DropRequestValidator;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -17,6 +18,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class FileDropManagementService {
 
     private final FileDropRepository fileDropRepository;
@@ -44,6 +46,16 @@ public class FileDropManagementService {
         ensureEditable(drop);
         dropRequestValidator.validateExpiration(request.expiresAt());
         drop.changeExpiration(request.expiresAt());
+
+        log.atInfo()
+                .addKeyValue("drop.id", id)
+                .addKeyValue("drop.expires_at", request.expiresAt())
+                .log(
+                        "File drop expiration updated dropId={} expiresAt={}",
+                        id,
+                        request.expiresAt()
+                );
+
         return toDetailsResponse(drop);
     }
 
@@ -65,6 +77,16 @@ public class FileDropManagementService {
         }
 
         drop.changeMaxDownloads(request.maxDownloads());
+
+        log.atInfo()
+                .addKeyValue("drop.id", id)
+                .addKeyValue("drop.max_downloads", request.maxDownloads())
+                .log(
+                        "File drop maximum downloads updated dropId={} maxDownloads={}",
+                        id,
+                        request.maxDownloads()
+                );
+
         return toDetailsResponse(drop);
     }
 
@@ -74,11 +96,20 @@ public class FileDropManagementService {
 
         if (drop.getStatus() == FileDropStatus.DELETED
                 || drop.getStatus() == FileDropStatus.DELETION_PENDING) {
+            log.debug(
+                    "Ignoring repeated deletion request dropId={} status={}",
+                    id,
+                    drop.getStatus()
+            );
             return;
         }
 
         drop.markDeletionPending();
         fileDropRepository.save(drop);
+
+        log.atInfo()
+                .addKeyValue("drop.id", id)
+                .log("File drop deletion requested dropId={}", id);
     }
 
     private FileDrop findByIdAndManagementTokenHashForUpdate(

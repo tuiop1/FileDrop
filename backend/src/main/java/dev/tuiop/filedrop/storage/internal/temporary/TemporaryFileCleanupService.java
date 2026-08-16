@@ -44,12 +44,25 @@ public class TemporaryFileCleanupService {
         Instant staleBefore = Instant.now().minus(maxAge);
 
         try (Stream<Path> files = Files.list(tempDirectory)) {
-            return files
+            int deletedCount = files
                     .filter(this::isApplicationTempFile)
                     .mapToInt(path -> deleteIfStale(path, staleBefore))
                     .sum();
+
+            if (deletedCount > 0) {
+                log.atInfo()
+                        .addKeyValue("cleanup.deleted_count", deletedCount)
+                        .log(
+                                "Temporary file cleanup completed deleted={}",
+                                deletedCount
+                        );
+            } else {
+                log.debug("Temporary file cleanup completed with no stale files");
+            }
+
+            return deletedCount;
         } catch (IOException | SecurityException exception) {
-            log.error("Failed to inspect temporary file directory {}", tempDirectory, exception);
+            log.error("Failed to inspect temporary file directory", exception);
             return 0;
         }
     }
@@ -70,11 +83,15 @@ public class TemporaryFileCleanupService {
             }
 
             if (Files.deleteIfExists(path)) {
-                log.info("Deleted stale temporary file {}", path);
+                log.debug("Deleted stale temporary file fileName={}", path.getFileName());
                 return 1;
             }
         } catch (IOException | SecurityException exception) {
-            log.warn("Failed to delete stale temporary file {}", path, exception);
+            log.warn(
+                    "Failed to delete stale temporary file fileName={}",
+                    path.getFileName(),
+                    exception
+            );
         }
 
         return 0;

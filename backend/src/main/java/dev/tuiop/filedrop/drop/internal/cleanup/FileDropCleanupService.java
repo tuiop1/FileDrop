@@ -39,7 +39,6 @@ public class FileDropCleanupService {
     }
 
     public void cleanup() {
-
         Instant now = Instant.now();
         Instant stalePendingBefore = now.minus(pendingTimeout);
 
@@ -49,53 +48,63 @@ public class FileDropCleanupService {
                 Limit.of(cleanupBatchSize)
         );
 
-        for (var id : ids) {
-            try{
-
-                cleanupOne(id, now, stalePendingBefore);
-            } catch (Exception e) {
-                log.error("Failed to cleanup FileDrop {}", id, e);
-            }
-
+        if (ids.isEmpty()) {
+            log.debug("File drop cleanup completed with no candidates");
+            return;
         }
 
+        int cleanedCount = 0;
+        int failureCount = 0;
 
+        for (var id : ids) {
+            try {
+                if (cleanupOne(id, now, stalePendingBefore)) {
+                    cleanedCount++;
+                }
+            } catch (Exception e) {
+                failureCount++;
+                log.atError()
+                        .addKeyValue("drop.id", id)
+                        .setCause(e)
+                        .log("Failed to clean up file drop dropId={}", id);
+            }
+        }
+
+        log.atInfo()
+                .addKeyValue("cleanup.candidate_count", ids.size())
+                .addKeyValue("cleanup.deleted_count", cleanedCount)
+                .addKeyValue("cleanup.failure_count", failureCount)
+                .log(
+                        "File drop cleanup completed candidates={} deleted={} failures={}",
+                        ids.size(),
+                        cleanedCount,
+                        failureCount
+                );
     }
 
-    private void cleanupOne(UUID id, Instant now, Instant stalePendingBefore) {
-        String storageKey = transactionTemplate.execute(status ->
-                {
-                   FileDrop drop = repository.findById(id).orElse(null);
+    private boolean cleanupOne(UUID id, Instant now, Instant stalePendingBefore) {
+        String storageKey = transactionTemplate.execute(status -> {
+            FileDrop drop = repository.findById(id).orElse(null);
 
-                   if(drop == null){
-                       return null ;
-                   }
+            if (drop == null || !isCleanupCandidate(drop, now, stalePendingBefore)) {
+                return null;
+            }
 
-                   if (!isCleanupCandidate(drop, now, stalePendingBefore)) {
-                       return null;
-                   }
-                   drop.markDeletionPending();
+            drop.markDeletionPending();
+            return drop.getStorageKey();
+        });
 
-                   return drop.getStorageKey();
-
-
-
-                }
-        );
-
-        if(storageKey == null){
-            return;
+        if (storageKey == null) {
+            return false;
         }
 
         objectStorage.delete(storageKey);
 
-        transactionTemplate.executeWithoutResult(transactionStatus ->
-        {
+        transactionTemplate.executeWithoutResult(transactionStatus -> {
             repository.findById(id).ifPresent(drop -> drop.markDeleted(Instant.now()));
         });
 
-
-
+        return true;
     }
 
     private boolean isCleanupCandidate(

@@ -1,5 +1,6 @@
 package dev.tuiop.filedrop.crypto.internal;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -9,6 +10,7 @@ import java.util.Arrays;
 import java.util.Base64;
 
 @Component
+@Slf4j
 public final class MasterKeyProviderImpl implements MasterKeyProvider {
 
     private static final int AES_256_KEY_SIZE_BYTES = 32;
@@ -50,6 +52,7 @@ public final class MasterKeyProviderImpl implements MasterKeyProvider {
 
             this.masterKey = new SecretKeySpec(decodedKey, "AES");
             this.version = version;
+            log.info("Encryption master key initialized keyVersion={}", version);
         } finally {
             Arrays.fill(decodedKey, (byte) 0);
         }

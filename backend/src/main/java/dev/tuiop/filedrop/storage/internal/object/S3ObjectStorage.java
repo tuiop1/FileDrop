@@ -3,6 +3,7 @@ package dev.tuiop.filedrop.storage.internal.object;
 import dev.tuiop.filedrop.storage.ObjectStorage;
 import dev.tuiop.filedrop.storage.internal.object.exception.ObjectStorageException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.core.sync.RequestBody;
@@ -15,6 +16,7 @@ import java.io.InputStream;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class S3ObjectStorage implements ObjectStorage {
 
     private final S3Client s3Client;
@@ -33,6 +35,13 @@ public class S3ObjectStorage implements ObjectStorage {
                     request,
                     RequestBody.fromInputStream(content, contentLength)
             );
+
+            log.debug(
+                    "Stored object bucket={} objectKey={} size={}",
+                    s3Properties.bucket(),
+                    objectKey,
+                    contentLength
+            );
         } catch (SdkException exception) {
             throw new ObjectStorageException(
                     "Failed to store object '%s'.".formatted(objectKey),
@@ -49,7 +58,13 @@ public class S3ObjectStorage implements ObjectStorage {
                     .key(objectKey)
                     .build();
 
-            return s3Client.getObject(request);
+            InputStream content = s3Client.getObject(request);
+            log.debug(
+                    "Opened object stream bucket={} objectKey={}",
+                    s3Properties.bucket(),
+                    objectKey
+            );
+            return content;
         } catch (SdkException exception) {
             throw new ObjectStorageException(
                     "Failed to load object '%s'.".formatted(objectKey),
@@ -67,6 +82,12 @@ public class S3ObjectStorage implements ObjectStorage {
                     .build();
 
             s3Client.deleteObject(request);
+
+            log.debug(
+                    "Deleted object bucket={} objectKey={}",
+                    s3Properties.bucket(),
+                    objectKey
+            );
         } catch (SdkException exception) {
             throw new ObjectStorageException(
                     "Failed to delete object '%s'.".formatted(objectKey),

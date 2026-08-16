@@ -31,3 +31,9 @@ application:
 clamav:
   host: ${FILEDROP_CLAMAV_HOST:localhost}
   port: ${FILEDROP_CLAMAV_PORT:3310}
+
+logging:
+  level:
+    dev.tuiop.filedrop: ${FILEDROP_LOG_LEVEL:DEBUG}
+  pattern:
+    correlation: '[%X{requestId:-}] '

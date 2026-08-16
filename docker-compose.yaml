@@ -99,6 +99,7 @@ services:
       FILEDROP_S3_ACCESS_KEY: ${FILEDROP_S3_ACCESS_KEY:-filedrop}
       FILEDROP_S3_SECRET_KEY: ${FILEDROP_S3_SECRET_KEY:-filedrop-local-secret}
       FILEDROP_CLAMAV_HOST: clamav
+      FILEDROP_LOG_LEVEL: ${FILEDROP_LOG_LEVEL:-DEBUG}
     ports:
       - '8080:8080'
 

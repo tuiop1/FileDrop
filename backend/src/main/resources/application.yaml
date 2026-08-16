@@ -5,6 +5,11 @@ spring:
   datasource:
     driver-class-name: org.postgresql.Driver
 
+  data:
+    redis:
+      repositories:
+        enabled: false
+
   jpa:
     open-in-view: false
     hibernate:
@@ -58,3 +63,8 @@ clamav:
 server:
   port: ${SERVER_PORT:8080}
   forward-headers-strategy: native
+
+logging:
+  level:
+    root: INFO
+    dev.tuiop.filedrop: INFO

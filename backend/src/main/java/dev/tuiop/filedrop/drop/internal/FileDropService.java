@@ -116,6 +116,20 @@ public class FileDropService {
             persistedDrop.markAvailable();
             FileDrop availableDrop = fileDropRepository.saveAndFlush(persistedDrop);
 
+            log.atInfo()
+                    .addKeyValue("drop.id", availableDrop.getId())
+                    .addKeyValue("file.size", availableDrop.getSize())
+                    .addKeyValue("file.content_type", availableDrop.getDetectedContentType())
+                    .addKeyValue("drop.expires_at", availableDrop.getExpiresAt())
+                    .addKeyValue("drop.max_downloads", availableDrop.getMaxDownloads())
+                    .addKeyValue("drop.password_protected", fileDropPassword != null)
+                    .log(
+                            "File drop created dropId={} size={} contentType={}",
+                            availableDrop.getId(),
+                            availableDrop.getSize(),
+                            availableDrop.getDetectedContentType()
+                    );
+
             return CreateDropResponse.builder()
                     .id(availableDrop.getId())
                     .managementToken(managementToken)
@@ -161,12 +175,21 @@ public class FileDropService {
         try {
             FileDrop reservedDrop = reserveDownload(tokenHash);
 
+            log.atInfo()
+                    .addKeyValue("drop.id", reservedDrop.getId())
+                    .addKeyValue("drop.downloads_remaining", reservedDrop.getDownloadsRemaining())
+                    .log(
+                            "Download reserved dropId={} downloadsRemaining={}",
+                            reservedDrop.getId(),
+                            reservedDrop.getDownloadsRemaining()
+                    );
+
             return new DropDownloadResult(
                     reservedDrop.getOriginalFileName(),
                     reservedDrop.getDetectedContentType(),
                     reservedDrop.getSize(),
                     reservedDrop.getDownloadsRemaining(),
-                    createDownloadBody(stagedFile)
+                    createDownloadBody(stagedFile, reservedDrop.getId())
             );
         } catch (RuntimeException | Error exception) {
             deleteStagedFile(stagedFile, exception);
@@ -279,10 +302,38 @@ public class FileDropService {
         }
     }
 
-    private StreamingResponseBody createDownloadBody(Path stagedFile) {
+    private StreamingResponseBody createDownloadBody(Path stagedFile, UUID dropId) {
         return outputStream -> {
+            long startedAt = System.nanoTime();
+
             try (InputStream inputStream = Files.newInputStream(stagedFile)) {
                 inputStream.transferTo(outputStream);
+                long durationNanos = System.nanoTime() - startedAt;
+                long durationMillis = durationNanos / 1_000_000;
+
+                log.atInfo()
+                        .addKeyValue("drop.id", dropId)
+                        .addKeyValue("event.duration", durationNanos)
+                        .log(
+                                "Download stream completed dropId={} durationMs={}",
+                                dropId,
+                                durationMillis
+                        );
+            } catch (IOException exception) {
+                long durationNanos = System.nanoTime() - startedAt;
+                long durationMillis = durationNanos / 1_000_000;
+
+                log.atWarn()
+                        .addKeyValue("drop.id", dropId)
+                        .addKeyValue("event.duration", durationNanos)
+                        .addKeyValue("error.type", exception.getClass().getSimpleName())
+                        .log(
+                                "Download stream failed dropId={} durationMs={} errorType={}",
+                                dropId,
+                                durationMillis,
+                                exception.getClass().getSimpleName()
+                        );
+                throw exception;
             } finally {
                 deleteStagedFile(stagedFile, null);
             }
@@ -299,8 +350,8 @@ public class FileDropService {
             }
 
             log.error(
-                    "Failed to delete staged download file '{}'.",
-                    stagedFile,
+                    "Failed to delete staged download file fileName={}",
+                    stagedFile.getFileName(),
                     cleanupFailure
             );
         }

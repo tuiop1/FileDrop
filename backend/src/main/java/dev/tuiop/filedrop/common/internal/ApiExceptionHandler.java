@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.HandlerMapping;
 
 @Slf4j
 @RestControllerAdvice
@@ -21,12 +22,19 @@ public class ApiExceptionHandler {
             TechnicalException exception,
             HttpServletRequest request
     ) {
-        log.error(
-                "Technical failure [{}] while handling request {}",
-                exception.code(),
-                request.getRequestURI(),
-                exception
-        );
+        String route = resolveRoute(request);
+
+        log.atError()
+                .addKeyValue("error.code", exception.code())
+                .addKeyValue("http.request.method", request.getMethod())
+                .addKeyValue("url.route", route)
+                .setCause(exception)
+                .log(
+                        "Technical failure {} while handling {} {}",
+                        exception.code(),
+                        request.getMethod(),
+                        route
+                );
 
         ApiError error = ApiError.of(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
@@ -67,5 +75,12 @@ public class ApiExceptionHandler {
         );
 
         return ResponseEntity.status(exception.status()).body(error);
+    }
+
+    private String resolveRoute(HttpServletRequest request) {
+        Object route = request.getAttribute(
+                HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE
+        );
+        return route == null ? "/api/**" : route.toString();
     }
 }

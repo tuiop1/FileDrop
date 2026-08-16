@@ -89,11 +89,11 @@ export class ManagementPageComponent {
   maximumExpiration = expirationInputBounds().max;
 
   constructor() {
-    combineLatest([this.route.paramMap, this.route.queryParamMap])
+    combineLatest([this.route.paramMap, this.route.fragment])
       .pipe(
-        map(([params, queryParams]) => ({
+        map(([params, fragment]) => ({
           id: params.get('id') ?? '',
-          token: queryParams.get('token') ?? '',
+          token: new URLSearchParams(fragment ?? '').get('token') ?? '',
         })),
         distinctUntilChanged(
           (previous, current) => previous.id === current.id && previous.token === current.token,

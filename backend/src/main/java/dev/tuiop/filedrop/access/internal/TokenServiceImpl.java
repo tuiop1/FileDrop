@@ -13,12 +13,13 @@ import java.util.HexFormat;
 @Service
 public class TokenServiceImpl implements TokenService {
 
+    private static final int TOKEN_BYTE_LENGTH = 32;
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
 
     @Override
     public String generateToken() {
-        byte[] bytes = new byte[32];
+        byte[] bytes = new byte[TOKEN_BYTE_LENGTH];
         SECURE_RANDOM.nextBytes(bytes);
 
         return Base64.getUrlEncoder()
@@ -43,6 +44,25 @@ public class TokenServiceImpl implements TokenService {
                     "SHA-256 is not available",
                     e
             );
+        }
+    }
+
+    @Override
+    public boolean isValidFormat(String token) {
+        if (token == null) {
+            return false;
+        }
+
+        try {
+            byte[] decodedToken = Base64.getUrlDecoder().decode(token);
+            String canonicalToken = Base64.getUrlEncoder()
+                    .withoutPadding()
+                    .encodeToString(decodedToken);
+
+            return decodedToken.length == TOKEN_BYTE_LENGTH
+                    && canonicalToken.equals(token);
+        } catch (IllegalArgumentException exception) {
+            return false;
         }
     }
 }

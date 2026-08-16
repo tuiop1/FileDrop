@@ -98,11 +98,30 @@
         <p>Upload up to 100 MB, choose when it expires, and share one clean link.</p>
       </header>
 
-      <form class="upload-panel" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <form
+        class="upload-panel"
+        [class.upload-panel--busy]="isUploading()"
+        [formGroup]="form"
+        [attr.aria-busy]="isUploading()"
+        (ngSubmit)="submit()"
+        novalidate
+      >
+        @if (isUploading()) {
+          <div class="upload-loading" role="status" aria-live="polite">
+            <span class="spinner spinner--accent upload-loading__spinner" aria-hidden="true"></span>
+            <strong>Preparing your file…</strong>
+            <span>
+              Uploading, checking its type, scanning, encrypting, and storing it. Large files may
+              take a moment.
+            </span>
+          </div>
+        }
+
         <div
           class="drop-zone"
           [class.drop-zone--active]="isDragging()"
           [class.drop-zone--selected]="selectedFile()"
+          [attr.inert]="isUploading() ? '' : null"
           (dragenter)="onDragEnter($event)"
           (dragover)="onDragOver($event)"
           (dragleave)="onDragLeave($event)"
@@ -171,7 +190,7 @@
           </p>
         }
 
-        <details class="options" open>
+        <details class="options" [attr.inert]="isUploading() ? '' : null" open>
           <summary>
             <span>
               <strong>Options</strong>

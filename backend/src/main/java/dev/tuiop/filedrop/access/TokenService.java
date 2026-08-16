@@ -5,5 +5,6 @@ public interface TokenService {
 
     String hashToken(String token);
 
+    boolean isValidFormat(String token);
 
 }

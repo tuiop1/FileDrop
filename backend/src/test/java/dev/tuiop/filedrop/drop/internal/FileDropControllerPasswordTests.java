@@ -34,12 +34,16 @@ class FileDropControllerPasswordTests {
 
     @Mock
     private FileDropService fileDropService;
+    @Mock
+    private FileDropManagementService fileDropManagementService;
 
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
-        mockMvc = standaloneSetup(new FileDropController(fileDropService))
+        mockMvc = standaloneSetup(
+                new FileDropController(fileDropService, fileDropManagementService)
+        )
                 .setControllerAdvice(new ApiExceptionHandler())
                 .build();
     }

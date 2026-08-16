@@ -86,9 +86,9 @@ The frontend uses a separate Compose profile so infrastructure-only commands do 
 
 - `/` — upload a file and configure expiration, maximum downloads, and an optional password
 - `/download/:token` — request the binary file and show the downloads remaining response header
-- `/manage/:id?token=:managementToken` — inspect, edit, refresh, or delete a drop
+- `/manage/:id#token=:managementToken` — inspect, edit, refresh, or delete a drop
 
-The management URL contains a secret token. Treat the full URL like a password and do not share it with download recipients.
+The management URL keeps its secret token in the browser-only fragment. Treat the full URL like a password and do not share it with download recipients.
 
 ## Password-protected downloads
 

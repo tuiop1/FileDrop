@@ -10,5 +10,20 @@ spring:
       enabled: false
 
 application:
+  base-url: http://localhost:8080
+
   encryption:
     master-key: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+
+  storage:
+    s3:
+      endpoint: http://localhost:9000
+      region: us-east-1
+      bucket: filedrop-test
+      access-key: test
+      secret-key: test-secret
+      path-style: true
+
+clamav:
+  host: localhost
+  port: 3310

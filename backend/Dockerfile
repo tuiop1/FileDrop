@@ -18,6 +18,8 @@ WORKDIR /app
 
 COPY --from=build /workspace/target/FileDrop-*.jar /app/filedrop.jar
 
+ENV SPRING_PROFILES_ACTIVE=prod
+
 USER 10001:10001
 
 EXPOSE 8080

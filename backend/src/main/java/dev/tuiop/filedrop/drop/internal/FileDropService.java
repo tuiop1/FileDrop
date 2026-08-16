@@ -7,9 +7,6 @@ import dev.tuiop.filedrop.crypto.FileEncryptionService;
 import dev.tuiop.filedrop.drop.internal.dto.CreateDropRequest;
 import dev.tuiop.filedrop.drop.internal.dto.CreateDropResponse;
 import dev.tuiop.filedrop.drop.internal.dto.DropDownloadResult;
-import dev.tuiop.filedrop.drop.internal.dto.FileDropDetailsResponse;
-import dev.tuiop.filedrop.drop.internal.dto.UpdateExpirationRequest;
-import dev.tuiop.filedrop.drop.internal.dto.UpdateMaxDownloadsRequest;
 import dev.tuiop.filedrop.drop.internal.exception.DownloadLimitExceededException;
 import dev.tuiop.filedrop.drop.internal.exception.DownloadPasswordRequiredException;
 import dev.tuiop.filedrop.drop.internal.exception.DropCreationException;
@@ -17,16 +14,13 @@ import dev.tuiop.filedrop.drop.internal.exception.DropDownloadPreparationExcepti
 import dev.tuiop.filedrop.drop.internal.exception.DropIntegrityException;
 import dev.tuiop.filedrop.drop.internal.exception.FileDropExpiredException;
 import dev.tuiop.filedrop.drop.internal.exception.FileDropNotFoundException;
-import dev.tuiop.filedrop.drop.internal.exception.FileDropNotEditableException;
 import dev.tuiop.filedrop.drop.internal.exception.InvalidDownloadPasswordException;
-import dev.tuiop.filedrop.drop.internal.exception.InvalidMaxDownloadsException;
 import dev.tuiop.filedrop.drop.internal.metadata.EncryptionMetadataMapper;
 import dev.tuiop.filedrop.drop.internal.validation.DropRequestValidator;
 import dev.tuiop.filedrop.integrity.ChecksumService;
 import dev.tuiop.filedrop.scanning.FileValidator;
 import dev.tuiop.filedrop.storage.ObjectStorage;
 import dev.tuiop.filedrop.storage.TemporaryFileStorage;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -39,7 +33,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Clock;
+import java.time.Instant;
 import java.util.UUID;
 
 @Service
@@ -59,11 +53,9 @@ public class FileDropService {
     private final TokenService tokenService;
     private final FileDropProperties fileDropProperties;
     private final TransactionTemplate transactionTemplate;
-    private final Clock clock;
-
 
     public CreateDropResponse create(MultipartFile file, CreateDropRequest request) {
-        fileDropValidator.firstFileValidation(file);
+        fileDropValidator.validateUpload(file);
 
         dropRequestValidator.validate(request);
 
@@ -82,7 +74,7 @@ public class FileDropService {
         String objectKey = null;
         try {
             long size = Files.size(tempFile);
-            String contentType = fileDropValidator.preStoreFileValidation(tempFile);
+            String contentType = fileDropValidator.validateStagedFile(tempFile);
 
             String sha256Checksum = checksumService.calculateSha256(tempFile);
 
@@ -123,6 +115,20 @@ public class FileDropService {
 
             persistedDrop.markAvailable();
             FileDrop availableDrop = fileDropRepository.saveAndFlush(persistedDrop);
+
+            log.atInfo()
+                    .addKeyValue("drop.id", availableDrop.getId())
+                    .addKeyValue("file.size", availableDrop.getSize())
+                    .addKeyValue("file.content_type", availableDrop.getDetectedContentType())
+                    .addKeyValue("drop.expires_at", availableDrop.getExpiresAt())
+                    .addKeyValue("drop.max_downloads", availableDrop.getMaxDownloads())
+                    .addKeyValue("drop.password_protected", fileDropPassword != null)
+                    .log(
+                            "File drop created dropId={} size={} contentType={}",
+                            availableDrop.getId(),
+                            availableDrop.getSize(),
+                            availableDrop.getDetectedContentType()
+                    );
 
             return CreateDropResponse.builder()
                     .id(availableDrop.getId())
@@ -169,12 +175,21 @@ public class FileDropService {
         try {
             FileDrop reservedDrop = reserveDownload(tokenHash);
 
+            log.atInfo()
+                    .addKeyValue("drop.id", reservedDrop.getId())
+                    .addKeyValue("drop.downloads_remaining", reservedDrop.getDownloadsRemaining())
+                    .log(
+                            "Download reserved dropId={} downloadsRemaining={}",
+                            reservedDrop.getId(),
+                            reservedDrop.getDownloadsRemaining()
+                    );
+
             return new DropDownloadResult(
                     reservedDrop.getOriginalFileName(),
                     reservedDrop.getDetectedContentType(),
                     reservedDrop.getSize(),
                     reservedDrop.getDownloadsRemaining(),
-                    createDownloadBody(stagedFile)
+                    createDownloadBody(stagedFile, reservedDrop.getId())
             );
         } catch (RuntimeException | Error exception) {
             deleteStagedFile(stagedFile, exception);
@@ -198,96 +213,6 @@ public class FileDropService {
         }
     }
 
-    public FileDropDetailsResponse getDetails(UUID id, String managementToken) {
-        validateToken(managementToken);
-        String managementTokenHash = tokenService.hashToken(managementToken);
-
-        FileDrop drop = fileDropRepository
-                .findByIdAndManagementTokenHash(id, managementTokenHash)
-                .orElseThrow(FileDropNotFoundException::new);
-
-        return toDetailsResponse(drop);
-    }
-
-    @Transactional
-    public FileDropDetailsResponse updateExpiration(
-            UUID id,
-            String managementToken,
-            UpdateExpirationRequest request
-    ) {
-        FileDrop drop = findByIdAndManagementTokenHashForUpdate(id, managementToken);
-        ensureEditable(drop);
-        dropRequestValidator.validateExpiration(request.expiresAt());
-        drop.changeExpiration(request.expiresAt());
-        return toDetailsResponse(drop);
-    }
-
-    @Transactional
-    public FileDropDetailsResponse updateMaxDownloads(
-            UUID id,
-            String managementToken,
-            UpdateMaxDownloadsRequest request
-    ) {
-        FileDrop drop = findByIdAndManagementTokenHashForUpdate(id, managementToken);
-        ensureEditable(drop);
-        dropRequestValidator.validateMaxDownloads(request.maxDownloads());
-
-        if (request.maxDownloads() <= drop.getDownloadCount()) {
-            throw new InvalidMaxDownloadsException(
-                    "Maximum downloads must exceed the current download count of %d."
-                            .formatted(drop.getDownloadCount())
-            );
-        }
-
-        drop.changeMaxDownloads(request.maxDownloads());
-        return toDetailsResponse(drop);
-    }
-
-    @Transactional
-    public void requestDeletion(UUID id, String managementToken) {
-        FileDrop drop = findByIdAndManagementTokenHashForUpdate(id, managementToken);
-
-        if(drop.getStatus() == FileDropStatus.DELETED || drop.getStatus() == FileDropStatus.DELETION_PENDING){
-            return;
-        }
-        drop.markDeletionPending();
-        fileDropRepository.save(drop);
-
-
-    }
-
-    private FileDrop findByIdAndManagementTokenHashForUpdate(UUID id, String managementToken) {
-        validateToken(managementToken);
-        String managementTokenHash = tokenService.hashToken(managementToken);
-        return fileDropRepository
-                .findByIdAndManagementTokenHashForUpdate(id, managementTokenHash)
-                .orElseThrow(FileDropNotFoundException::new);
-    }
-
-    private void ensureEditable(FileDrop drop) {
-        if (drop.getStatus() != FileDropStatus.AVAILABLE
-                || drop.isExpired(clock.instant())) {
-            throw new FileDropNotEditableException();
-        }
-    }
-
-    private FileDropDetailsResponse toDetailsResponse(FileDrop drop) {
-        return new FileDropDetailsResponse(
-                drop.getId(),
-                drop.getOriginalFileName(),
-                drop.getDetectedContentType(),
-                drop.getSize(),
-                drop.getCreatedAt(),
-                drop.getExpiresAt(),
-                drop.getDeletedAt(),
-                drop.getMaxDownloads(),
-                drop.getDownloadCount(),
-                drop.getDownloadsRemaining(),
-                drop.getStatus(),
-                drop.getPasswordHash() != null
-        );
-    }
-
     private FileDrop reserveDownload(String tokenHash) {
         return transactionTemplate.execute(status -> {
             FileDrop drop = findByTokenHashAndLock(tokenHash);
@@ -298,7 +223,7 @@ public class FileDropService {
     }
 
     private void validateToken(String token) {
-        if (token == null || !token.matches("^[A-Za-z0-9_-]{43}$")) {
+        if (!tokenService.isValidFormat(token)) {
             throw new FileDropNotFoundException();
         }
     }
@@ -317,7 +242,7 @@ public class FileDropService {
         if (drop.getStatus() != FileDropStatus.AVAILABLE) {
             throw new FileDropNotFoundException();
         }
-        if (drop.isExpired(clock.instant())) {
+        if (drop.isExpired(Instant.now())) {
             throw new FileDropExpiredException();
         }
         if (drop.getDownloadCount() >= drop.getMaxDownloads()) {
@@ -377,10 +302,38 @@ public class FileDropService {
         }
     }
 
-    private StreamingResponseBody createDownloadBody(Path stagedFile) {
+    private StreamingResponseBody createDownloadBody(Path stagedFile, UUID dropId) {
         return outputStream -> {
+            long startedAt = System.nanoTime();
+
             try (InputStream inputStream = Files.newInputStream(stagedFile)) {
                 inputStream.transferTo(outputStream);
+                long durationNanos = System.nanoTime() - startedAt;
+                long durationMillis = durationNanos / 1_000_000;
+
+                log.atInfo()
+                        .addKeyValue("drop.id", dropId)
+                        .addKeyValue("event.duration", durationNanos)
+                        .log(
+                                "Download stream completed dropId={} durationMs={}",
+                                dropId,
+                                durationMillis
+                        );
+            } catch (IOException exception) {
+                long durationNanos = System.nanoTime() - startedAt;
+                long durationMillis = durationNanos / 1_000_000;
+
+                log.atWarn()
+                        .addKeyValue("drop.id", dropId)
+                        .addKeyValue("event.duration", durationNanos)
+                        .addKeyValue("error.type", exception.getClass().getSimpleName())
+                        .log(
+                                "Download stream failed dropId={} durationMs={} errorType={}",
+                                dropId,
+                                durationMillis,
+                                exception.getClass().getSimpleName()
+                        );
+                throw exception;
             } finally {
                 deleteStagedFile(stagedFile, null);
             }
@@ -397,8 +350,8 @@ public class FileDropService {
             }
 
             log.error(
-                    "Failed to delete staged download file '{}'.",
-                    stagedFile,
+                    "Failed to delete staged download file fileName={}",
+                    stagedFile.getFileName(),
                     cleanupFailure
             );
         }
@@ -447,7 +400,10 @@ public class FileDropService {
             return;
         }
 
-        throw cleanupFailure;
+        log.error(
+                "Failed to clean up temporary files after creating the file drop.",
+                cleanupFailure
+        );
     }
 
     private void markCreationFailed(

@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: filedrop-backend
+  namespace: filedrop
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: filedrop-backend
+
+  template:
+    metadata:
+      labels:
+        app: filedrop-backend
+
+    spec:
+      enableServiceLinks: false
+
+      containers:
+        - name: backend
+          image: tuiop1/filedrop-backend:0.1.0
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - name: http
+              containerPort: 8080
+
+          envFrom:
+            - configMapRef:
+                name: filedrop-config
+
+            - secretRef:
+                name: filedrop-secrets
+
+          startupProbe:
+            tcpSocket:
+              port: 8080
+            periodSeconds: 5
+            failureThreshold: 30
+
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            periodSeconds: 5
+
+          livenessProbe:
+            tcpSocket:
+              port: 8080
+            periodSeconds: 15
+            failureThreshold: 3
+
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1536Mi
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 10001
+            capabilities:
+              drop:
+                - ALL
+
+---
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: filedrop-backend
+  namespace: filedrop
+
+spec:
+  type: ClusterIP
+
+  selector:
+    app: filedrop-backend
+
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080

@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: filedrop-frontend
+  namespace: filedrop
+
+spec:
+  replicas: 2
+
+  selector:
+    matchLabels:
+      app: filedrop-frontend
+
+  template:
+    metadata:
+      labels:
+        app: filedrop-frontend
+
+    spec:
+      containers:
+        - name: frontend
+          image: tuiop1/filedrop-frontend:0.1.0
+          imagePullPolicy: IfNotPresent
+
+          env:
+            - name: FILEDROP_CADDY_ADDRESS
+              value: "http://"
+
+            - name: FILEDROP_BACKEND_URL
+              value: "http://filedrop-backend:8080"
+
+          ports:
+            - name: http
+              containerPort: 80
+
+            - name: health
+              containerPort: 8081
+
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8081
+            periodSeconds: 2
+            failureThreshold: 15
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8081
+            periodSeconds: 5
+
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8081
+            periodSeconds: 15
+
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+
+---
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: filedrop-frontend
+  namespace: filedrop
+
+spec:
+  type: ClusterIP
+
+  selector:
+    app: filedrop-frontend
+
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80

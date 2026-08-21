@@ -1,0 +1,33 @@
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+
+metadata:
+  name: traefik
+  namespace: kube-system
+
+spec:
+  valuesContent: |-
+    # Keep the ACME account and issued certificates when the Traefik Pod is replaced.
+    persistence:
+      enabled: true
+      size: 128Mi
+
+    certificatesResolvers:
+      letsencrypt:
+        acme:
+          # Replace this before applying the manifest.
+          email: change-me@example.com
+          storage: /data/acme.json
+          # Let's Encrypt must be able to reach this EC2 instance on port 80.
+          httpChallenge:
+            entryPoint: web
+
+    # Send normal HTTP traffic to HTTPS. The ACME HTTP-01 challenge still uses web.
+    ports:
+      web:
+        http:
+          redirections:
+            entryPoint:
+              to: websecure
+              scheme: https
+              permanent: true

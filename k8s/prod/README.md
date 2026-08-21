@@ -10,7 +10,9 @@ Amazon S3 bucket.
 - Install K3s with Traefik and Secret encryption enabled.
 - Allow inbound TCP 80 and 443 in the EC2 Security Group. Restrict SSH to your
   IP or use AWS Systems Manager.
-- Assign a stable Elastic IP and preferably a DNS name.
+- Assign a stable Elastic IP and create a public DNS `A` record pointing the
+  FileDrop hostname to it. Both DNS and port 80 must work before Let's Encrypt
+  can complete its HTTP-01 challenge.
 - Create the S3 bucket configured by `FILEDROP_S3_BUCKET` in the configured
   `FILEDROP_S3_REGION`, with Block Public Access enabled.
 - Attach an IAM instance role to EC2 that can access objects in that bucket.
@@ -47,12 +49,20 @@ Replace the bucket name in both policy resources when using another bucket.
 Run these commands from the repository root with `kubectl` configured for the
 EC2 K3s cluster.
 
-1. Edit `01-configmap.yaml` and set:
+1. Edit `01-configmap.yaml` and `09-ingress.yaml`:
 
-   - `FILEDROP_BASE_URL` to the public URL, including `http://` or `https://`.
+   - Set `FILEDROP_BASE_URL` to the public HTTPS URL.
    - `FILEDROP_S3_REGION` to the bucket's AWS Region.
    - `FILEDROP_S3_BUCKET` to the existing private bucket.
-   - The same hostname under `rules[].host` in `09-ingress.yaml`.
+   - Set the same hostname under `rules[].host` in `09-ingress.yaml`.
+
+   Confirm that the hostname already resolves to the EC2 Elastic IP:
+
+   ```bash
+   getent hosts filedrop-prod.xyz
+   ```
+
+   Replace `filedrop-prod.xyz` in this README's commands with your domain.
 
 2. Create the real Secret and replace every `change-me-*` value:
 
@@ -83,7 +93,21 @@ EC2 K3s cluster.
    git restore --staged -- k8s/prod/01-secret.yaml
    ```
 
-3. Create the namespace and configuration:
+3. Create the real Traefik TLS configuration and replace the ACME email:
+
+   ```bash
+   cp k8s/prod/05-traefik-tls.yaml.example k8s/prod/05-traefik-tls.yaml
+   $EDITOR k8s/prod/05-traefik-tls.yaml
+   kubectl apply -f k8s/prod/05-traefik-tls.yaml
+   kubectl rollout status deployment/traefik -n kube-system --timeout=5m
+   ```
+
+   K3s applies this `HelmChartConfig` to its bundled Traefik chart. It enables
+   the `letsencrypt` certificate resolver, persists ACME state, and redirects
+   normal HTTP traffic to HTTPS. The real file is ignored by Git so a personal
+   contact email is not committed accidentally.
+
+4. Create the namespace and FileDrop configuration:
 
    ```bash
    kubectl apply -f k8s/prod/00-namespace.yaml
@@ -91,7 +115,7 @@ EC2 K3s cluster.
    kubectl apply -f k8s/prod/01-secret.yaml
    ```
 
-4. Start infrastructure and wait for it. ClamAV can take several minutes to
+5. Start infrastructure and wait for it. ClamAV can take several minutes to
    download its initial signatures:
 
    ```bash
@@ -109,7 +133,7 @@ EC2 K3s cluster.
      --timeout=10m
    ```
 
-5. Deploy FileDrop and its Ingress:
+6. Deploy FileDrop and its TLS-enabled Ingress:
 
    ```bash
    kubectl apply \
@@ -121,15 +145,18 @@ EC2 K3s cluster.
    kubectl rollout status deployment/filedrop-frontend -n filedrop --timeout=5m
    ```
 
-6. Point the public DNS `A` record at the EC2 Elastic IP, then verify:
+7. Verify the deployment and HTTPS certificate:
 
    ```bash
    kubectl get pods,services,ingress -n filedrop
+   curl -I https://filedrop-prod.xyz
    curl -I http://filedrop-prod.xyz
    ```
 
-   Replace `filedrop-prod.xyz` with the configured domain. There is no local
-   `/etc/hosts` mapping in production.
+   The HTTPS request should return an application response. The HTTP request
+   should redirect to HTTPS. There is no local `/etc/hosts` mapping in
+   production; the public DNS record is required for users and certificate
+   issuance.
 
 ## Verify the EC2 role
 
@@ -184,6 +211,8 @@ kubectl describe ingress -n filedrop filedrop
 kubectl get events -n filedrop --sort-by=.lastTimestamp
 kubectl get ingressclass,storageclass
 kubectl get pvc -n filedrop
+kubectl get pvc -n kube-system
+kubectl logs -n kube-system deployment/traefik --tail=200
 ```
 
 The PVCs use K3s local-path storage. They survive Pod replacement and normally
@@ -191,5 +220,7 @@ survive EC2 stop/start, but they are tied to that instance's disk. Back up
 PostgreSQL and `FILEDROP_MASTER_KEY`; for stronger production durability, use
 RDS PostgreSQL or an EBS CSI-backed StorageClass.
 
-The current Ingress is HTTP-only. Configure a real domain and TLS through
-Traefik/cert-manager before sending passwords or files over the public internet.
+TLS certificates are issued automatically through the Traefik `letsencrypt`
+resolver. If issuance fails, check the public DNS record, Security Group ports
+80 and 443, and the Traefik logs. Keep `05-traefik-tls.yaml` and its persistent
+volume: the ACME storage contains the resolver's account and certificate state.

@@ -40,3 +40,4 @@ build/
 
 #k8s
 k8s/local/01-secret.yaml
+k8s/prod/01-secret.yaml

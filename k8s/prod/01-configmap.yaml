@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: ConfigMap
+
+metadata:
+  name: filedrop-config
+  namespace: filedrop
+
+data:
+  SPRING_PROFILES_ACTIVE: prod
+
+  SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/postgres
+  SPRING_DATASOURCE_USERNAME: postgres
+
+  SPRING_DATA_REDIS_HOST: redis
+  SPRING_DATA_REDIS_PORT: "6379"
+  SPRING_DATA_REDIS_USERNAME: default
+  SPRING_DATA_REDIS_DATABASE: "0"
+  SPRING_DATA_REDIS_SSL_ENABLED: "false"
+
+
+                     #change to ur domain
+  FILEDROP_BASE_URL: http://filedrop-prod.xyz
+
+  FILEDROP_S3_REGION: eu-central-1
+  FILEDROP_S3_BUCKET: filedrop-prod-jieksaoes
+
+  FILEDROP_CLAMAV_HOST: clamav
+  FILEDROP_CLAMAV_PORT: "3310"
+  FILEDROP_CLAMAV_READ_TIMEOUT: 150s
+
+  FILEDROP_LOG_LEVEL: INFO

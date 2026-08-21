@@ -1,0 +1,30 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+
+metadata:
+  name: filedrop
+  namespace: filedrop
+
+spec:
+  ingressClassName: traefik
+
+  rules:
+    #change to ur domain
+    - host: filedrop-prod.xyz
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: filedrop-backend
+                port:
+                  number: 8080
+
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: filedrop-frontend
+                port:
+                  number: 80

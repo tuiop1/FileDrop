@@ -5,11 +5,17 @@ metadata:
   name: filedrop
   namespace: filedrop
 
+  annotations:
+    # The "letsencrypt" resolver is configured in 05-traefik-tls.yaml.
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+
 spec:
   ingressClassName: traefik
 
   rules:
-    #change to ur domain
+    # Must match the hostname in FILEDROP_BASE_URL.
     - host: filedrop-prod.xyz
       http:
         paths:

@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: filedrop-config
+  namespace: filedrop
+data:
+    SPRING_PROFILES_ACTIVE: dev
+    SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/postgres
+    SPRING_DATASOURCE_USERNAME: postgres
+
+    SPRING_DATA_REDIS_URL: redis://redis:6379
+
+    FILEDROP_BASE_URL: http://filedrop.test
+
+    FILEDROP_S3_ENDPOINT: http://minio:9000
+
+    FILEDROP_CLAMAV_HOST: clamav
+    FILEDROP_CLAMAV_PORT: "3310"
+
+    FILEDROP_LOG_LEVEL: DEBUG

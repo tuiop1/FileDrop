@@ -7,6 +7,7 @@
 [![AWS](https://img.shields.io/badge/AWS-EC2%20%7C%20S3-FF9900?logo=amazonwebservices\&logoColor=white)](https://aws.amazon.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-4169E1?logo=postgresql\&logoColor=white)](https://www.postgresql.org/)
 [![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED?logo=docker\&logoColor=white)](https://www.docker.com/)
+[![Kubernetes](https://img.shields.io/badge/Kubernetes-K3s%20%7C%20Minikube-326CE5?logo=kubernetes\&logoColor=white)](https://kubernetes.io/)
 [![CI](https://github.com/tuiop1/FileDrop/actions/workflows/testandbuild.yml/badge.svg)](https://github.com/tuiop1/FileDrop/actions/workflows/testandbuild.yml)
 
 FileDrop is a backend-focused file-sharing application that allows users to upload files and share them through temporary download links without creating an account.
@@ -37,6 +38,7 @@ Uploaded files pass through validation, content detection, malware scanning, int
 * Automatic cleanup of expired and exhausted drops
 * Streaming downloads for efficient file handling
 * Dockerized local and production environments
+* Kubernetes configurations for local **Minikube** and production **K3s** deployments
 
 ---
 
@@ -167,6 +169,9 @@ Public endpoints are protected by **Redis-backed rate limiting** to reduce abuse
 * **Amazon EC2**
 * **Docker**
 * **Docker Compose**
+* **Kubernetes**
+* **K3s**
+* **Minikube**
 * **GitHub Actions**
 
 ### API
@@ -295,6 +300,26 @@ The pipeline performs:
 5. production backend Docker image build
 
 CI verifies both the Java application and the production container configuration.
+
+---
+
+## Kubernetes
+
+FileDrop includes separate Kubernetes configurations for local development and production deployment.
+
+The local environment uses **Minikube** to run and test the application stack in Kubernetes. The setup includes Kubernetes **Deployments**, **Services**, configuration resources, persistent storage, health probes, and **Ingress** routing.
+
+For production, FileDrop uses **K3s**, a lightweight Kubernetes distribution suitable for the EC2 deployment. The production manifests manage the application and supporting services while **Amazon S3** remains the external persistent object storage.
+
+The Kubernetes configuration is separated into:
+
+```text
+k8s/
+├── local/
+└── prod/
+```
+
+This provides separate environment-specific configurations while keeping the deployment model consistent between local development and production.
 
 ---
 

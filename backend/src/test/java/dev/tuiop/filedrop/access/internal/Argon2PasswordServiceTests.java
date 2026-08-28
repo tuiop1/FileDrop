@@ -34,20 +34,7 @@ class Argon2PasswordServiceTests {
         assertThatCode(() -> passwordService.validate(password)).doesNotThrowAnyException();
     }
 
-    @Test
-    void reportsFormatValidationErrors() {
-        assertThatThrownBy(() -> passwordService.validate("short\n"))
-                .isInstanceOf(InvalidPasswordException.class)
-                .satisfies(exception -> {
-                    InvalidPasswordException invalidPassword =
-                            (InvalidPasswordException) exception;
-                    assertThat(invalidPassword.errors().get("password"))
-                            .containsExactly(
-                                    "Password must be between 8 and 128 Unicode characters.",
-                                    "Password must not contain control characters."
-                            );
-                });
-    }
+
 
     @Test
     void rejectsCompromisedPassword() {

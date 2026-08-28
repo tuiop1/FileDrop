@@ -32,8 +32,8 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -135,8 +135,13 @@ class FileDropServiceCreationTests {
 
     @Test
     void createsAvailableDropAndCleansTemporaryFiles() throws Exception {
+        // Arrange
+        long plaintextFileSize = Files.size(plaintextFile);
+
+        // Act
         CreateDropResponse response = fileDropService.create(upload, request);
 
+        // Assert
         assertThat(response.id()).isEqualTo(persistedDrop.getId());
         assertThat(response.managementToken()).isEqualTo(MANAGEMENT_TOKEN);
         assertThat(response.downloadUrl())
@@ -149,7 +154,7 @@ class FileDropServiceCreationTests {
         FileDrop newDrop = dropCaptor.getAllValues().getFirst();
         assertThat(newDrop.getOriginalFileName()).isEqualTo("report.txt");
         assertThat(newDrop.getDetectedContentType()).isEqualTo("text/plain");
-        assertThat(newDrop.getSize()).isEqualTo(Files.size(plaintextFile));
+        assertThat(newDrop.getSize()).isEqualTo(plaintextFileSize);
         assertThat(newDrop.getSha256()).isEqualTo(CHECKSUM);
         assertThat(newDrop.getDownloadTokenHash()).isEqualTo(DOWNLOAD_TOKEN_HASH);
         assertThat(newDrop.getManagementTokenHash()).isEqualTo(MANAGEMENT_TOKEN_HASH);
@@ -166,11 +171,14 @@ class FileDropServiceCreationTests {
 
     @Test
     void temporaryFileCleanupFailureDoesNotFailSuccessfulCreation() {
+        // Arrange
         RuntimeException cleanupFailure = new RuntimeException("temporary storage unavailable");
         doThrow(cleanupFailure).when(temporaryFileStorage).delete(plaintextFile);
 
+        // Act
         CreateDropResponse response = fileDropService.create(upload, request);
 
+        // Assert
         assertThat(response.id()).isEqualTo(persistedDrop.getId());
         assertThat(persistedDrop.getStatus()).isEqualTo(FileDropStatus.AVAILABLE);
         verify(temporaryFileStorage).delete(plaintextFile);
@@ -180,14 +188,17 @@ class FileDropServiceCreationTests {
 
     @Test
     void storageFailureMarksDropFailedAndRemovesPartialObject() {
+        // Arrange
         RuntimeException storageFailure = new RuntimeException("storage unavailable");
         doThrow(storageFailure)
                 .when(objectStorage)
                 .store(anyString(), any(InputStream.class), eq(encryptedFile.size()));
 
-        assertThatThrownBy(() -> fileDropService.create(upload, request))
-                .isSameAs(storageFailure);
+        // Act
+        Throwable thrown = catchThrowable(() -> fileDropService.create(upload, request));
 
+        // Assert
+        assertThat(thrown).isSameAs(storageFailure);
         assertThat(persistedDrop.getStatus()).isEqualTo(FileDropStatus.FAILED);
         verify(fileDropRepository, times(2)).saveAndFlush(any(FileDrop.class));
 

@@ -9,9 +9,16 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.HandlerMapping;
+
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @RestControllerAdvice
@@ -60,6 +67,28 @@ public class ApiExceptionHandler {
         );
 
         return ResponseEntity.status(exception.status()).body(error);
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ValidationApiError> handleMethodArgumentNotValidException(
+            MethodArgumentNotValidException exception,
+            HttpServletRequest request
+    ) {
+        Map<String, List<String>> errors = new LinkedHashMap<>();
+        for (FieldError fieldError : exception.getBindingResult().getFieldErrors()) {
+            errors.computeIfAbsent(fieldError.getField(), ignored -> new ArrayList<>())
+                    .add(fieldError.getDefaultMessage());
+        }
+
+        ValidationApiError error = ValidationApiError.of(
+                HttpStatus.BAD_REQUEST.value(),
+                "VALIDATION_FAILED",
+                "Request validation failed.",
+                request.getRequestURI(),
+                errors
+        );
+
+        return ResponseEntity.badRequest().body(error);
     }
 
     @ExceptionHandler(BusinessException.class)

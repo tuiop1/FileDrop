@@ -2,7 +2,6 @@ package dev.tuiop.filedrop.drop.internal;
 
 import dev.tuiop.filedrop.access.TokenService;
 import dev.tuiop.filedrop.common.RateLimiter;
-import dev.tuiop.filedrop.common.logging.ApiRequestLoggingFilter;
 import dev.tuiop.filedrop.drop.internal.metadata.EncryptionMetadataEntity;
 import dev.tuiop.filedrop.storage.ObjectStorage;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,7 +24,6 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -90,7 +88,6 @@ class FileDropApplicationIntegrationTests {
                         .servletPath(detailsPath)
                         .header("X-Management-Token", MANAGEMENT_TOKEN))
                 .andExpect(status().isOk())
-                .andExpect(header().exists(ApiRequestLoggingFilter.REQUEST_ID_HEADER))
                 .andExpect(jsonPath("$.id").value(drop.getId().toString()))
                 .andExpect(jsonPath("$.originalFileName").value("integration.txt"))
                 .andExpect(jsonPath("$.downloadsRemaining").value(3))

@@ -47,14 +47,11 @@ public class FileDropManagementService {
         dropRequestValidator.validateExpiration(request.expiresAt());
         drop.changeExpiration(request.expiresAt());
 
-        log.atInfo()
-                .addKeyValue("drop.id", id)
-                .addKeyValue("drop.expires_at", request.expiresAt())
-                .log(
-                        "File drop expiration updated dropId={} expiresAt={}",
-                        id,
-                        request.expiresAt()
-                );
+        log.info(
+                "File drop expiration updated dropId={} expiresAt={}",
+                id,
+                request.expiresAt()
+        );
 
         return toDetailsResponse(drop);
     }
@@ -78,14 +75,11 @@ public class FileDropManagementService {
 
         drop.changeMaxDownloads(request.maxDownloads());
 
-        log.atInfo()
-                .addKeyValue("drop.id", id)
-                .addKeyValue("drop.max_downloads", request.maxDownloads())
-                .log(
-                        "File drop maximum downloads updated dropId={} maxDownloads={}",
-                        id,
-                        request.maxDownloads()
-                );
+        log.info(
+                "File drop maximum downloads updated dropId={} maxDownloads={}",
+                id,
+                request.maxDownloads()
+        );
 
         return toDetailsResponse(drop);
     }
@@ -107,9 +101,7 @@ public class FileDropManagementService {
         drop.markDeletionPending();
         fileDropRepository.save(drop);
 
-        log.atInfo()
-                .addKeyValue("drop.id", id)
-                .log("File drop deletion requested dropId={}", id);
+        log.info("File drop deletion requested dropId={}", id);
     }
 
     private FileDrop findByIdAndManagementTokenHashForUpdate(

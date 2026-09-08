@@ -42,12 +42,3 @@ logging:
   level:
     root: ${LOGGING_LEVEL_ROOT:INFO}
     dev.tuiop.filedrop: ${FILEDROP_LOG_LEVEL:INFO}
-  structured:
-    format:
-      console: ecs
-    ecs:
-      service:
-        environment: production
-    json:
-      context:
-        include: true

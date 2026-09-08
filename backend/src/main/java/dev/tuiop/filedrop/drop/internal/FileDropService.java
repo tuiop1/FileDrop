@@ -116,19 +116,12 @@ public class FileDropService {
             persistedDrop.markAvailable();
             FileDrop availableDrop = fileDropRepository.saveAndFlush(persistedDrop);
 
-            log.atInfo()
-                    .addKeyValue("drop.id", availableDrop.getId())
-                    .addKeyValue("file.size", availableDrop.getSize())
-                    .addKeyValue("file.content_type", availableDrop.getDetectedContentType())
-                    .addKeyValue("drop.expires_at", availableDrop.getExpiresAt())
-                    .addKeyValue("drop.max_downloads", availableDrop.getMaxDownloads())
-                    .addKeyValue("drop.password_protected", fileDropPassword != null)
-                    .log(
-                            "File drop created dropId={} size={} contentType={}",
-                            availableDrop.getId(),
-                            availableDrop.getSize(),
-                            availableDrop.getDetectedContentType()
-                    );
+            log.info(
+                    "File drop created dropId={} size={} contentType={}",
+                    availableDrop.getId(),
+                    availableDrop.getSize(),
+                    availableDrop.getDetectedContentType()
+            );
 
             return CreateDropResponse.builder()
                     .id(availableDrop.getId())
@@ -175,14 +168,11 @@ public class FileDropService {
         try {
             FileDrop reservedDrop = reserveDownload(tokenHash);
 
-            log.atInfo()
-                    .addKeyValue("drop.id", reservedDrop.getId())
-                    .addKeyValue("drop.downloads_remaining", reservedDrop.getDownloadsRemaining())
-                    .log(
-                            "Download reserved dropId={} downloadsRemaining={}",
-                            reservedDrop.getId(),
-                            reservedDrop.getDownloadsRemaining()
-                    );
+            log.info(
+                    "Download reserved dropId={} downloadsRemaining={}",
+                    reservedDrop.getId(),
+                    reservedDrop.getDownloadsRemaining()
+            );
 
             return new DropDownloadResult(
                     reservedDrop.getOriginalFileName(),
@@ -311,28 +301,21 @@ public class FileDropService {
                 long durationNanos = System.nanoTime() - startedAt;
                 long durationMillis = durationNanos / 1_000_000;
 
-                log.atInfo()
-                        .addKeyValue("drop.id", dropId)
-                        .addKeyValue("event.duration", durationNanos)
-                        .log(
-                                "Download stream completed dropId={} durationMs={}",
-                                dropId,
-                                durationMillis
-                        );
+                log.info(
+                        "Download stream completed dropId={} durationMs={}",
+                        dropId,
+                        durationMillis
+                );
             } catch (IOException exception) {
                 long durationNanos = System.nanoTime() - startedAt;
                 long durationMillis = durationNanos / 1_000_000;
 
-                log.atWarn()
-                        .addKeyValue("drop.id", dropId)
-                        .addKeyValue("event.duration", durationNanos)
-                        .addKeyValue("error.type", exception.getClass().getSimpleName())
-                        .log(
-                                "Download stream failed dropId={} durationMs={} errorType={}",
-                                dropId,
-                                durationMillis,
-                                exception.getClass().getSimpleName()
-                        );
+                log.warn(
+                        "Download stream failed dropId={} durationMs={} errorType={}",
+                        dropId,
+                        durationMillis,
+                        exception.getClass().getSimpleName()
+                );
                 throw exception;
             } finally {
                 deleteStagedFile(stagedFile, null);

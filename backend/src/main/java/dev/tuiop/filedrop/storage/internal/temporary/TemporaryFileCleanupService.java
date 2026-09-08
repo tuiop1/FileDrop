@@ -50,12 +50,10 @@ public class TemporaryFileCleanupService {
                     .sum();
 
             if (deletedCount > 0) {
-                log.atInfo()
-                        .addKeyValue("cleanup.deleted_count", deletedCount)
-                        .log(
-                                "Temporary file cleanup completed deleted={}",
-                                deletedCount
-                        );
+                log.info(
+                        "Temporary file cleanup completed deleted={}",
+                        deletedCount
+                );
             } else {
                 log.debug("Temporary file cleanup completed with no stale files");
             }

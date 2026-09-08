@@ -35,5 +35,3 @@ clamav:
 logging:
   level:
     dev.tuiop.filedrop: ${FILEDROP_LOG_LEVEL:DEBUG}
-  pattern:
-    correlation: '[%X{requestId:-}] '

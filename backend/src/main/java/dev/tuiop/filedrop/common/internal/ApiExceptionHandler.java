@@ -31,17 +31,13 @@ public class ApiExceptionHandler {
     ) {
         String route = resolveRoute(request);
 
-        log.atError()
-                .addKeyValue("event.code", exception.code())
-                .addKeyValue("http.request.method", request.getMethod())
-                .addKeyValue("url.route", route)
-                .setCause(exception)
-                .log(
-                        "Technical failure {} while handling {} {}",
-                        exception.code(),
-                        request.getMethod(),
-                        route
-                );
+        log.error(
+                "Technical failure {} while handling {} {}",
+                exception.code(),
+                request.getMethod(),
+                route,
+                exception
+        );
 
         ApiError error = ApiError.of(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),

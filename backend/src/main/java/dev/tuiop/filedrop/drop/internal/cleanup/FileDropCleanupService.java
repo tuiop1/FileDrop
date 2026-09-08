@@ -63,23 +63,16 @@ public class FileDropCleanupService {
                 }
             } catch (Exception e) {
                 failureCount++;
-                log.atError()
-                        .addKeyValue("drop.id", id)
-                        .setCause(e)
-                        .log("Failed to clean up file drop dropId={}", id);
+                log.error("Failed to clean up file drop dropId={}", id, e);
             }
         }
 
-        log.atInfo()
-                .addKeyValue("cleanup.candidate_count", ids.size())
-                .addKeyValue("cleanup.deleted_count", cleanedCount)
-                .addKeyValue("cleanup.failure_count", failureCount)
-                .log(
-                        "File drop cleanup completed candidates={} deleted={} failures={}",
-                        ids.size(),
-                        cleanedCount,
-                        failureCount
-                );
+        log.info(
+                "File drop cleanup completed candidates={} deleted={} failures={}",
+                ids.size(),
+                cleanedCount,
+                failureCount
+        );
     }
 
     private boolean cleanupOne(UUID id, Instant now, Instant stalePendingBefore) {

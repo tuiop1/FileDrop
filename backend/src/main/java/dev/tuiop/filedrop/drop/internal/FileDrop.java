@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.jspecify.annotations.NonNull;
 
 import java.time.Instant;
 import java.util.Objects;
@@ -105,7 +106,7 @@ public class FileDrop {
         status = FileDropStatus.FAILED;
     }
 
-    boolean isExpired(Instant now) {
+    boolean isExpired(@NonNull Instant now) {
         return !now.isBefore(expiresAt);
     }
 

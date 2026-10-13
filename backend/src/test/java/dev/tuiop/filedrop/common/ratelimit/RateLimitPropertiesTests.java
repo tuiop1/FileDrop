@@ -18,6 +18,7 @@ class RateLimitPropertiesTests {
     void acceptsPositiveLimitsAndWindows() {
         var properties = new RateLimitProperties(
                 new RateLimitProperties.Policy(100, Duration.ofMinutes(1)),
+                new RateLimitProperties.Policy(5, Duration.ofMinutes(1)),
                 new RateLimitProperties.Policy(5, Duration.ofMinutes(1))
         );
 
@@ -28,6 +29,7 @@ class RateLimitPropertiesTests {
     void rejectsMissingPoliciesAndNonPositiveValues() {
         var properties = new RateLimitProperties(
                 new RateLimitProperties.Policy(0, Duration.ZERO),
+                null,
                 null
         );
 
@@ -36,7 +38,21 @@ class RateLimitPropertiesTests {
                 .containsExactlyInAnyOrder(
                         "request.limit",
                         "request.windowValid",
-                        "upload"
+                        "upload",
+                        "download"
                 );
+    }
+
+    @Test
+    void rejectsInvalidDownloadPolicy() {
+        var properties = new RateLimitProperties(
+                new RateLimitProperties.Policy(100, Duration.ofMinutes(1)),
+                new RateLimitProperties.Policy(5, Duration.ofMinutes(1)),
+                new RateLimitProperties.Policy(0, Duration.ZERO)
+        );
+
+        assertThat(VALIDATOR.validate(properties))
+                .extracting(violation -> violation.getPropertyPath().toString())
+                .containsExactlyInAnyOrder("download.limit", "download.windowValid");
     }
 }

@@ -35,7 +35,8 @@ services:
       - '3310:3310'
 
   minio:
-    image: quay.io/minio/minio:latest
+    # PGSTY's maintained MinIO-compatible server (Silo).
+    image: pgsty/silo:RELEASE.2026-09-16T00-00-00Z
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
@@ -47,7 +48,7 @@ services:
       - minio_data:/data
 
   minio-init:
-    image: quay.io/minio/mc:latest
+    image: pgsty/mc:RELEASE.2026-09-16T00-00-00Z
     depends_on:
       - minio
     environment:
@@ -74,7 +75,7 @@ services:
         echo 'MinIO bucket and FileDrop application user are ready.'
 
   backend:
-    profiles: ['backend']
+
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -104,7 +105,7 @@ services:
       - '8080:8080'
 
   frontend:
-    profiles: ['frontend']
+
     build:
       context: ./frontend
       dockerfile: Dockerfile

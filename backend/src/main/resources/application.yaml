@@ -37,6 +37,10 @@ application:
       limit: ${FILEDROP_UPLOAD_RATE_LIMIT:5}
       window: ${FILEDROP_UPLOAD_RATE_WINDOW:1m}
 
+    download:
+      limit: ${FILEDROP_DOWNLOAD_RATE_LIMIT:5}
+      window: ${FILEDROP_DOWNLOAD_RATE_WINDOW:1m}
+
   temporary-storage:
     directory: ${java.io.tmpdir}/filedrop
     cleanup:

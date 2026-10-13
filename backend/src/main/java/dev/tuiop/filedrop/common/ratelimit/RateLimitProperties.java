@@ -14,7 +14,8 @@ import java.time.Duration;
 @ConfigurationProperties(prefix = "application.rate-limit")
 public record RateLimitProperties(
         @Valid @NotNull Policy request,
-        @Valid @NotNull Policy upload
+        @Valid @NotNull Policy upload,
+        @Valid @NotNull Policy download
 ) {
 
     public record Policy(
